@@ -28,7 +28,7 @@ func TelegramBot(statusRetriever chan models.StatusRetriever) {
 	// Функция отправки сообщения об ошибке из внешних сервисов
 	go func(chatID int64) {
 		for {
-			// // Отправляем сообщение об ошибке
+			// Отправляем сообщение об ошибке
 			val, ok := <-statusRetriever
 			if ok {
 				if val.MsgError != nil {

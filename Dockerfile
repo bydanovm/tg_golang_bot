@@ -1,5 +1,6 @@
 #build stage
-FROM tggolangbot:staging AS builder
+# FROM tggolangbot:staging AS builder
+FROM shoutertm/dockerhub:tggolangbot AS builder
 # RUN apk add --no-cache git
 WORKDIR /go/src/tg_golang_bot
 COPY . .

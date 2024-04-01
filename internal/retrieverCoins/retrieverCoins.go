@@ -28,6 +28,9 @@ func RunRetrieverCoins(timeout int, errorMsg chan models.StatusRetriever) error 
 			chanSrv.MsgError = err
 			errorMsg <- chanSrv
 		}
+		// if timeout == 0 {
+		timeout = 300
+		// }
 		time.Sleep(time.Duration(timeout) * time.Second)
 	}
 }

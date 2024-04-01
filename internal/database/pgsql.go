@@ -33,7 +33,6 @@ func createTable(tableStruct interface{}) error {
 	}
 	tableName = strings.ToLower(tableName)
 	if exists, err := checkExistsTable(tableName, "public"); err == nil && !exists {
-		//Создаем таблицу users
 		var fieldsNameType []string
 		for i := 0; i < len(fields); i++ {
 			fieldsNameType = append(fieldsNameType, fields[i]+` `+fieldsTypes[i])
@@ -53,6 +52,7 @@ func CreateTables() error {
 	users := Users{}
 	dictCrypto := DictCrypto{}
 	cryptoPrices := Cryptoprices{}
+	settingsProject := SettingsProject{}
 
 	if err := createTable(&users); err != nil {
 		return fmt.Errorf("CreateTables:" + err.Error())
@@ -63,6 +63,10 @@ func CreateTables() error {
 	}
 	// Таблица всех цен по криптовалютам
 	if err := createTable(&cryptoPrices); err != nil {
+		return fmt.Errorf("CreateTables:" + err.Error())
+	}
+	// Таблица всех цен по криптовалютам
+	if err := createTable(&settingsProject); err != nil {
 		return fmt.Errorf("CreateTables:" + err.Error())
 	}
 	return nil
@@ -80,12 +84,15 @@ func checkExistsTable(tableName string, tableSchema string) (bool, error) {
 	// Проверяем на существование таблицы в базе
 	row := db.QueryRow(`select exists (select * from information_schema.tables where table_name = '` + tableName + `' and table_schema = '` + tableSchema + `')::int as "count";`)
 	err = row.Scan(&count)
-	if err != nil || count == 0 {
+	if err != nil {
 		return false,
 			fmt.Errorf("checkExistsTable:" + sqlScanErr + ":" + err.Error())
 	}
+	if count == 0 {
+		return false, nil
+	}
 
-	return true, err
+	return true, nil
 }
 
 // Таблицу мы создали, и нам нужно заносить в нее данные, этим займется следующая функция.

@@ -1,4 +1,5 @@
-FROM tggolangbot:staging
+# FROM tggolangbot:staging
+FROM shoutertm/dockerhub:tggolangbot AS builder
 WORKDIR /go/src/tg_golang_bot
 COPY . .
 RUN CGO_ENABLED=0 go build -gcflags "all=-N -l" -o /go/bin/tg_golang_bot -v ./cmd/app/main.go

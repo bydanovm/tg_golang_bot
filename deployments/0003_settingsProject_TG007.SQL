@@ -1,0 +1,12 @@
+BEGIN;
+    MERGE INTO public.SettingsProject as t
+    USING (VALUES('TMR_RESP_RTV','Время опроса ретривера',true,'int','300'))
+        s (NAME, DESCRIPTION, ACTIVE, TYPE, VALUE)
+        ON t.NAME = s.NAME
+    WHEN MATCHED THEN 
+        UPDATE SET (NAME, DESCRIPTION, ACTIVE, TYPE, VALUE) =
+                (s.NAME, s.DESCRIPTION, s.ACTIVE, s.TYPE, s.VALUE)
+    WHEN NOT MATCHED THEN
+        INSERT (NAME, DESCRIPTION, ACTIVE, TYPE, VALUE)
+        VALUES (s.NAME, s.DESCRIPTION, s.ACTIVE, s.TYPE, s.VALUE);
+END;
