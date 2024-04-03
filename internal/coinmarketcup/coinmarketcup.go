@@ -51,6 +51,18 @@ func GetLatest(cryptocurrencies string) (answer []string) {
 			)
 			findCryptoCur = append(findCryptoCur, subFields.CryptoName)
 			s = append(s, str)
+			// Увеличиваем счетчик запроса КВ
+			dictCryptos := map[string]string{
+				"CryptoCounter": fmt.Sprintf("%v", subFields.CryptoCounter+1),
+			}
+			expLst := []database.Expressions{}
+			expLst = append(expLst, database.Expressions{
+				Key: database.CryptoId, Operator: database.EQ, Value: `'` + fmt.Sprintf("%v", subFields.CryptoId) + `'`,
+			})
+			if err := database.UpdateData("dictcrypto", dictCryptos, expLst); err != nil {
+				s = append(s, "Возвращена ошибка при обновлении в БД: "+err.Error())
+				return s
+			}
 		}
 		// Если нашли все валюты, то возвращаем их
 		if countFind == len(cryptoCur) {

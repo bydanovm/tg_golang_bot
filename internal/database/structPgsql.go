@@ -44,7 +44,8 @@ type DictCrypto struct {
 	CryptoName      string    `sql_type:"TEXT"`
 	CryptoLastPrice float32   `sql_type:"NUMERIC(15,9)"`
 	CryptoUpdate    time.Time `sql_type:"TIMESTAMP"`
-	Active          bool      `sql_type:"BOOLEAN"`
+	Active          bool      `sql_type:"BOOLEAN NOT NULL DEFAULT TRUE"`
+	CryptoCounter   int       `sql_type:"INTEGER NOT NULL DEFAULT 0"`
 }
 
 // Структура данных таблицы Cryptoprices

@@ -13,7 +13,7 @@ ENV LANGUAGE="en"
 RUN apk --no-cache add ca-certificates tzdata
 COPY --from=builder /go/bin/tg_golang_bot /tg_golang_bot
 ENTRYPOINT /tg_golang_bot
-LABEL Name=tggolangbot Version=0.0.7
+LABEL Name=tggolangbot Version=0.0.7.4
 EXPOSE 3000
 EXPOSE 4000
 EXPOSE 80/tcp 
