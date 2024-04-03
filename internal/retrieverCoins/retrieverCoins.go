@@ -28,9 +28,6 @@ func RunRetrieverCoins(timeout int, errorMsg chan models.StatusRetriever) error 
 			chanSrv.MsgError = err
 			errorMsg <- chanSrv
 		}
-		// if timeout == 0 {
-		timeout = 300
-		// }
 		time.Sleep(time.Duration(timeout) * time.Second)
 	}
 }
@@ -53,7 +50,9 @@ func retrieverCoins() error {
 		for _, subRs := range rs {
 			subFields := database.DictCrypto{}
 			mapstructure.Decode(subRs, &subFields)
-			needFind = append(needFind, subFields.CryptoName)
+			if subFields.Active {
+				needFind = append(needFind, subFields.CryptoName)
+			}
 		}
 		if len(needFind) > 0 {
 			if err := getAndSaveFromAPI(needFind); err != nil {

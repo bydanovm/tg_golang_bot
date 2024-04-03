@@ -45,7 +45,13 @@ func main() {
 			}
 		}
 	}()
-
+	for {
+		if cfg.TmrRespRvt == 0 {
+			continue
+		} else {
+			break
+		}
+	}
 	// Вызов функции автоматического обновления КВ
 	go retrievercoins.RunRetrieverCoins(cfg.TmrRespRvt, ch)
 	// Вызываем бота

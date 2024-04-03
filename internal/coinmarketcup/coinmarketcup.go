@@ -101,18 +101,19 @@ func GetLatest(cryptocurrencies string) (answer []string) {
 		s = append(s, "Возвращена ошибка:\n"+qla.Error_message)
 	}
 	for i := range qla.QuotesLatestAnswerResults {
-		str := fmt.Sprintf("Криптовалюта: %s\nЦена: %.9f %s\nОбновлено: %s",
-			qla.QuotesLatestAnswerResults[i].Symbol,
-			qla.QuotesLatestAnswerResults[i].Price,
-			qla.QuotesLatestAnswerResults[i].Currency,
-			qla.QuotesLatestAnswerResults[i].Last_updated.Format("2006-01-02 15:04:05"),
-		)
-		s = append(s, str)
-
 		dateTime, err := models.ConvertDateTimeToMSK(qla.QuotesLatestAnswerResults[i].Last_updated)
 		if err != nil {
 			s = append(s, fmt.Sprintf("getAndSaveFromAPI:"+err.Error()))
 		}
+
+		str := fmt.Sprintf("Криптовалюта: %s\nЦена: %.9f %s\nОбновлено: %s",
+			qla.QuotesLatestAnswerResults[i].Symbol,
+			qla.QuotesLatestAnswerResults[i].Price,
+			qla.QuotesLatestAnswerResults[i].Currency,
+			dateTime,
+		)
+		s = append(s, str)
+
 		// Добавление найденной валюты в БД текущих цен и справочник валют
 		cryptoprices := map[string]string{
 			"CryptoId":     fmt.Sprintf("%v", qla.QuotesLatestAnswerResults[i].Id),
