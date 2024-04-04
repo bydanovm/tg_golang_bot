@@ -28,11 +28,11 @@ const (
 	Timelast        string = "timelast"
 )
 
-type Users struct {
+type LogMsg struct {
 	Id        int       `sql_type:"SERIAL PRIMARY KEY"`
 	Timestamp time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
-	UserName  string    `sql_type:"INT"`
-	Chat_Id   int       `sql_type:"NUMERIC(15,3)"`
+	UserName  string    `sql_type:"TEXT"`
+	Chat_Id   int       `sql_type:"INTEGER"`
 	Message   string    `sql_type:"TEXT"`
 	Answer    string    `sql_type:"TEXT"`
 }
@@ -40,7 +40,7 @@ type Users struct {
 type DictCrypto struct {
 	Id              int       `sql_type:"SERIAL PRIMARY KEY"`
 	Timestamp       time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
-	CryptoId        int       `sql_type:"INT"`
+	CryptoId        int       `sql_type:"INTEGER"`
 	CryptoName      string    `sql_type:"TEXT"`
 	CryptoLastPrice float32   `sql_type:"NUMERIC(15,9)"`
 	CryptoUpdate    time.Time `sql_type:"TIMESTAMP"`
@@ -52,7 +52,7 @@ type DictCrypto struct {
 type Cryptoprices struct {
 	Id           int       `sql_type:"SERIAL PRIMARY KEY"`
 	Timestamp    time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
-	CryptoId     int       `sql_type:"INT"`
+	CryptoId     int       `sql_type:"INTEGER"`
 	CryptoPrice  float32   `sql_type:"NUMERIC(15,9)"`
 	CryptoUpdate time.Time `sql_type:"TIMESTAMP"`
 }

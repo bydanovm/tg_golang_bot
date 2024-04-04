@@ -49,12 +49,13 @@ func createTable(tableStruct interface{}) error {
 
 // Создание таблицы
 func CreateTables() error {
-	users := Users{}
+	logMsg := LogMsg{}
 	dictCrypto := DictCrypto{}
 	cryptoPrices := Cryptoprices{}
 	settingsProject := SettingsProject{}
 
-	if err := createTable(&users); err != nil {
+	// Логирование запросов пользователя
+	if err := createTable(&logMsg); err != nil {
 		return fmt.Errorf("CreateTables:" + err.Error())
 	}
 	// Справочник криптовалют с последними ценами
@@ -109,7 +110,7 @@ func CollectData(username string, chatid int64, message string, answer []string)
 	answ := strings.Join(answer, ", ")
 
 	//Создаем SQL запрос
-	data := `INSERT INTO users(username, chat_id, message, answer) VALUES($1, $2, $3, $4);`
+	data := `INSERT INTO logmsg(username, chat_id, message, answer) VALUES($1, $2, $3, $4);`
 
 	//Выполняем наш SQL запрос
 	if _, err = db.Exec(data, `@`+username, chatid, message, answ); err != nil {
@@ -159,11 +160,6 @@ func UpdateData(tableName string, Data map[string]string, expression []Expressio
 	}
 	data = data[:len(data)-2] + " WHERE "
 
-	// keysStr := strings.Join(keys, ", ")
-	// valuesStr := strings.Join(values, "', '")
-	// data += keysStr + `) VALUES ('` + valuesStr + `');`
-
-	// var str string
 	for _, value := range expression {
 		data += value.Join()
 	}
@@ -203,10 +199,6 @@ func ReadDataRow(fields interface{}, expression []Expressions, countIter int) ([
 		return nil, false, 0,
 			fmt.Errorf("ReadDataRow:" + err.Error())
 	}
-	// var columnsArr []string
-	// for k, _ := range columns {
-	// 	columnsArr = append(columnsArr, k)
-	// }
 	//Создаем SQL запрос
 	data := `SELECT ` + strings.Join(columns, ", ") + ` FROM ` + tableName + ` WHERE `
 	for _, value := range expression {
