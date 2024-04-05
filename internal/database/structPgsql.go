@@ -68,6 +68,54 @@ type SettingsProject struct {
 	Timestart   time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 	Timelast    time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 }
+type LevelsSecureAdd struct {
+	IdLvlSecAdd     int    `sql_type:"SERIAL PRIMARY KEY"`
+	NameLvlSecAdd   string `sql_type:"TEXT"`
+	ActiveLvlSecAdd bool   `sql_type:"BOOLEAN DEFAULT FALSE"`
+	LvlSecId        int    `sql_type:"INTEGER REFERENCES LevelsSecure (idLvlSec)"`
+}
+type LevelsSecure struct {
+	IdLvlSec   int    `sql_type:"SERIAL PRIMARY KEY"`
+	NameLvlSec string `sql_type:"TEXT"`
+}
+type Groups struct {
+	IdGrp    int    `sql_type:"SERIAL PRIMARY KEY"`
+	NameGrp  string `sql_type:"TEXT"`
+	LvlSecId int    `sql_type:"INTEGER REFERENCES LevelsSecure (idLvlSec)"`
+}
+type Users struct {
+	IdUsr     int       `sql_type:"SERIAL PRIMARY KEY"`
+	TsUsr     time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
+	NameUsr   string    `sql_type:"TEXT"`
+	ChatIdUsr int       `sql_type:"INTEGER"`
+	GroupId   int       `sql_type:"INTEGER REFERENCES Groups (idGrp)"`
+}
+type LimitsDict struct {
+	IdLmtDct   int    `sql_type:"SERIAL PRIMARY KEY"`
+	NameLmtDct string `sql_type:"TEXT"`
+	StdValLmt  int    `sql_type:"INTEGER DEFAULT 0"`
+}
+type Limits struct {
+	IdLmt       int       `sql_type:"SERIAL PRIMARY KEY"`
+	ValAvailLmt int       `sql_type:"INTEGER DEFAULT 0"`
+	ValUsedLmt  int       `sql_type:"INTEGER DEFAULT 0"`
+	ActiveLmt   bool      `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
+	TsLmtOn     time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
+	TsLmtOff    time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
+	UserId      int       `sql_type:"INTEGER REFERENCES Users (idUsr)"`
+}
+type TypeTrackingCrypto struct {
+	IdTypTrkCrp    int    `sql_type:"SERIAL PRIMARY KEY"`
+	NameTypeTrkCrp string `sql_type:"TEXT"`
+	ModeTypTrkCrp  string `sql_type:"TEXT"`
+}
+type TrackingCrypto struct {
+	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY"`
+	ValTrkCrp   float32 `sql_type:"NUMERIC(15,9)"`
+	TypTrkCrpId int     `sql_type:"INTEGER REFERENCES TypeTrackingCrypto (idTypTrkCrp)"`
+	DctCrpId    int     `sql_type:"INTEGER REFERENCES DictCrypto (CryptoId)"`
+	UserId      int     `sql_type:"INTEGER REFERENCES Users (idUsr)"`
+}
 type Expressions struct {
 	Key      string
 	Operator string

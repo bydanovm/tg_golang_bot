@@ -9,12 +9,14 @@ import (
 	"github.com/mbydanov/tg_golang_bot/internal/coinmarketcup"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
+	"github.com/mbydanov/tg_golang_bot/internal/notifications"
 
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 )
 
 // Создаем бота
-func TelegramBot(statusRetriever chan models.StatusRetriever) {
+func TelegramBot(statusRetriever chan models.StatusRetriever,
+	notifTelegramIn chan models.StatusChannel) {
 	// Создаем бота
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TOKEN"))
 	if err != nil {
@@ -39,6 +41,21 @@ func TelegramBot(statusRetriever chan models.StatusRetriever) {
 		}
 	}(786751823)
 
+	// Функция получения сообщения от нотификатора
+	go func() {
+		for {
+			val, ok := <-notifTelegramIn
+			if ok {
+				arr, ok := val.Data.([]notifications.NotificationsCCStruct)
+				if ok {
+					for _, v := range arr {
+						msg := tgbotapi.NewMessage(int64(v.IdChat), v.Event)
+						bot.Send(msg)
+					}
+				}
+			}
+		}
+	}()
 	// Получаем обновления от бота
 	updates, err := bot.GetUpdatesChan(u)
 	if err != nil {

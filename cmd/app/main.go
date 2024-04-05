@@ -7,6 +7,7 @@ import (
 	"github.com/mbydanov/tg_golang_bot/internal/config"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
+	"github.com/mbydanov/tg_golang_bot/internal/notifications"
 	retrievercoins "github.com/mbydanov/tg_golang_bot/internal/retrieverCoins"
 	"github.com/mbydanov/tg_golang_bot/internal/tgbot"
 )
@@ -28,6 +29,8 @@ func main() {
 	ch := make(chan models.StatusRetriever)
 	chConfig := make(chan config.ConfigStruct)
 	cfg := config.ConfigStruct{}
+	chanRetrieverNotif := make(chan models.StatusChannel)
+	chanNotifTelegram := make(chan models.StatusChannel)
 	// Получение настроек
 	go config.GetConfig(chConfig)
 
@@ -38,7 +41,7 @@ func main() {
 			val, ok := <-chConfig
 			if ok {
 				if val.MsgError != nil {
-					ch <- models.StatusRetriever{val.MsgError}
+					ch <- models.StatusRetriever{MsgError: val.MsgError}
 				} else {
 					cfg = val
 				}
@@ -53,7 +56,11 @@ func main() {
 		}
 	}
 	// Вызов функции автоматического обновления КВ
-	go retrievercoins.RunRetrieverCoins(cfg.TmrRespRvt, ch)
+	go retrievercoins.RunRetrieverCoins(
+		cfg.TmrRespRvt, ch, chanRetrieverNotif)
+	go notifications.RunNotification(
+		chanRetrieverNotif, chanNotifTelegram)
 	// Вызываем бота
-	tgbot.TelegramBot(ch)
+	tgbot.TelegramBot(
+		ch, chanNotifTelegram)
 }

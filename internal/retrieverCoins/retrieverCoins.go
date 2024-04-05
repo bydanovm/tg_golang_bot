@@ -21,17 +21,26 @@ type quotesLatestAnswerExt struct {
 	coinmarketcup.QuotesLatestAnswer
 }
 
-func RunRetrieverCoins(timeout int, errorMsg chan models.StatusRetriever) error {
+func RunRetrieverCoins(
+	timeout int,
+	errorMsg chan models.StatusRetriever,
+	retrieverNotifOut chan models.StatusChannel) error {
 	var chanSrv models.StatusRetriever
+	var chanRetrieverNotifOut models.StatusChannel
 	for {
-		if err := retrieverCoins(); err != nil {
+		if res, err := retrieverCoins(); err != nil {
 			chanSrv.MsgError = err
 			errorMsg <- chanSrv
+		} else {
+			// Передача данных в нотификатор
+			chanRetrieverNotifOut.Start = true
+			chanRetrieverNotifOut.Data = res
+			retrieverNotifOut <- chanRetrieverNotifOut
 		}
 		time.Sleep(time.Duration(timeout) * time.Second)
 	}
 }
-func retrieverCoins() error {
+func retrieverCoins() (interface{}, error) {
 	// Получаем основные КВ для запроса актуальной информации из справочника КВ
 	fields := database.DictCrypto{}
 	expLst := []database.Expressions{}
@@ -42,7 +51,7 @@ func retrieverCoins() error {
 
 	rs, find, _, err := database.ReadDataRow(&fields, expLst, 0)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Если какие-то записи найдены, то мы строим запрос для обращения к API
 	if find {
@@ -55,20 +64,23 @@ func retrieverCoins() error {
 			}
 		}
 		if len(needFind) > 0 {
-			if err := getAndSaveFromAPI(needFind); err != nil {
-				return err
+			if res, err := getAndSaveFromAPI(needFind); err != nil {
+				return res, err
+			} else {
+				return res, err
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
-func getAndSaveFromAPI(cryptoCur []string) error {
-
+func getAndSaveFromAPI(cryptoCur []string) (interface{}, error) {
+	bufferForNotif := []database.DictCrypto{}      // Буфер для посыла в нотификатор
+	bufferForNotifMap := make(map[int]interface{}) // Буфер для посыла в нотификатор
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest", nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	q := url.Values{}
@@ -81,21 +93,21 @@ func getAndSaveFromAPI(cryptoCur []string) error {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	respBody, _ := io.ReadAll(resp.Body)
 	qla := &quotesLatestAnswerExt{}
 	if err = json.Unmarshal([]byte(respBody), qla); err != nil {
-		return err
+		return nil, err
 	}
 	if qla.Error_code != 0 {
-		return err
+		return nil, err
 	}
 	for i := range qla.QuotesLatestAnswerResults {
 
 		dateTime, err := models.ConvertDateTimeToMSK(qla.QuotesLatestAnswerResults[i].Last_updated)
 		if err != nil {
-			return fmt.Errorf("getAndSaveFromAPI:" + err.Error())
+			return nil, fmt.Errorf("getAndSaveFromAPI:" + err.Error())
 		}
 		// dateTimeUTC3, _ := time.ParseInLocation(layout, dateTime, dateTimeLocUTC3)
 		// Добавление найденной валюты в таблицы текущих цен и обновление справочника валют
@@ -105,7 +117,7 @@ func getAndSaveFromAPI(cryptoCur []string) error {
 			"CryptoUpdate": dateTime,
 		}
 		if err := database.WriteData("cryptoprices", cryptoprices); err != nil {
-			return err
+			return nil, err
 		}
 
 		dictCryptos := map[string]string{
@@ -119,18 +131,31 @@ func getAndSaveFromAPI(cryptoCur []string) error {
 			Key: database.CryptoId, Operator: database.EQ, Value: `'` + cryptoprices["CryptoId"] + `'`,
 		})
 		if err := database.UpdateData("dictcrypto", dictCryptos, expLst); err != nil {
-			return err
+			return nil, err
 		}
 
 		// Поиск индекса найденной валюты и её удаление из массива needFind
 		cryptoCur = models.FindCellAndDelete(cryptoCur, qla.QuotesLatestAnswerResults[i].Symbol)
-
+		// Добавление в буфер
+		bufferForNotif = append(bufferForNotif, database.DictCrypto{
+			Id:              0,
+			Timestamp:       time.Now(),
+			CryptoId:        qla.QuotesLatestAnswerResults[i].Id,
+			CryptoName:      qla.QuotesLatestAnswerResults[i].Symbol,
+			CryptoLastPrice: qla.QuotesLatestAnswerResults[i].Price,
+			CryptoUpdate:    time.Now(),
+			Active:          true,
+			CryptoCounter:   0,
+		})
+		bufferForNotifMap[qla.QuotesLatestAnswerResults[i].Id] = bufferForNotif
 	}
 	// Есть не найденная криптовалюта
 	if len(cryptoCur) != 0 {
-		return errors.New(`Криптовалюта ` + strings.Join(cryptoCur, `, `) + ` не найдена`)
+		// return bufferForNotif, errors.New(`Криптовалюта ` + strings.Join(cryptoCur, `, `) + ` не найдена`)
+		return bufferForNotifMap, errors.New(`Криптовалюта ` + strings.Join(cryptoCur, `, `) + ` не найдена`)
 	}
-	return nil
+	// return bufferForNotif, nil
+	return bufferForNotifMap, nil
 }
 
 func (qla *quotesLatestAnswerExt) UnmarshalJSON(bs []byte) error {
