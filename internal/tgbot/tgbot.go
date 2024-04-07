@@ -10,6 +10,7 @@ import (
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 	"github.com/mbydanov/tg_golang_bot/internal/notifications"
+	"github.com/mbydanov/tg_golang_bot/internal/services"
 
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 )
@@ -56,6 +57,7 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 			}
 		}
 	}()
+
 	// Получаем обновления от бота
 	updates, err := bot.GetUpdatesChan(u)
 	if err != nil {
@@ -66,8 +68,12 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 		if update.Message == nil {
 			continue
 		}
-
-		// Проверяем что от пользователья пришло именно текстовое сообщение
+		// Проверяем есть ли пользователь в базе
+		if err := services.CheckUser(update.Message); err != nil {
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, err.Error())
+			bot.Send(msg)
+		}
+		// Проверяем что от пользователя пришло именно текстовое сообщение
 		if reflect.TypeOf(update.Message.Text).Kind() == reflect.String && update.Message.Text != "" {
 			switch update.Message.Text {
 			case "/start":

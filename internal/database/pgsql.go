@@ -6,6 +6,8 @@ import (
 	"os"
 	"reflect"
 	"strings"
+
+	"github.com/mbydanov/tg_golang_bot/internal/models"
 )
 
 // Теперь нам нужно как то взаимодействовать с БД.
@@ -137,6 +139,36 @@ func WriteData(tableName string, Data map[string]string) error {
 	keysStr := strings.Join(keys, ", ")
 	valuesStr := strings.Join(values, "', '")
 	data += keysStr + `) VALUES ('` + valuesStr + `');`
+
+	//Выполняем наш SQL запрос
+	if _, err = db.Exec(data); err != nil {
+		return fmt.Errorf("WriteData:" + sqlExecErr + ":" + err.Error())
+	}
+
+	return nil
+}
+
+func WriteDataStruct(structIn interface{}) error {
+
+	// Определяем информацию по структуре
+	structInfo := models.StructInfo{}
+	if err := structInfo.GetFieldInfo(structIn); err != nil {
+		return err
+	}
+	fieldinfoMap, err := structInfo.UnionFieldsSQL()
+	if err != nil {
+		return err
+	}
+	// Создаем SQL запрос
+	data := `INSERT INTO ` + structInfo.StructName + ` (` +
+		fieldinfoMap["Fields"] + `) VALUES ('` + fieldinfoMap["Values"] + `');`
+
+	//Подключаемся к БД
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		return fmt.Errorf("WriteData:" + sqlConErr + ":" + err.Error())
+	}
+	defer db.Close()
 
 	//Выполняем наш SQL запрос
 	if _, err = db.Exec(data); err != nil {

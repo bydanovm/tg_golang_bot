@@ -86,10 +86,47 @@ type Groups struct {
 type Users struct {
 	IdUsr     int       `sql_type:"SERIAL PRIMARY KEY"`
 	TsUsr     time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
-	NameUsr   string    `sql_type:"TEXT"`
-	ChatIdUsr int       `sql_type:"INTEGER"`
-	GroupId   int       `sql_type:"INTEGER REFERENCES Groups (idGrp)"`
+	NameUsr   string    `sql_type:"TEXT NOT NULL"`
+	FirstName string    `sql_type:"TEXT NOT NULL"`
+	LastName  string    `sql_type:"TEXT NOT NULL"`
+	LangCode  string    `sql_type:"TEXT NOT NULL"`
+	IsBot     bool      `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
+	IsBanned  bool      `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
+	ChatIdUsr int64     `sql_type:"NUMERIC(15,0) NOT NULL"`
+	IdLvlSec  int       `sql_type:"INTEGER REFERENCES levelssecure (idlvlsec)"`
 }
+
+// Поиск пользователя в базе
+func (u *Users) Find() (int, error) {
+	fields := Users{}
+	expLst := []Expressions{}
+
+	expLst = append(expLst, Expressions{
+		Key:      "idusr",
+		Operator: EQ,
+		Value:    `'` + fmt.Sprintf("%v", u.IdUsr) + `'`,
+	})
+
+	_, find, _, err := ReadDataRow(&fields, expLst, 1)
+	if err != nil {
+		return -1, fmt.Errorf("Find:" + err.Error())
+	}
+
+	if find {
+		return u.IdUsr, nil
+	}
+
+	return -1, nil
+}
+
+// Добавление пользователя в базу
+func (u *Users) Add() (int, error) {
+	if err := WriteDataStruct(u); err != nil {
+		return -1, err
+	}
+	return u.IdUsr, nil
+}
+
 type LimitsDict struct {
 	IdLmtDct   int    `sql_type:"SERIAL PRIMARY KEY"`
 	NameLmtDct string `sql_type:"TEXT"`
