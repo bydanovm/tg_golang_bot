@@ -75,7 +75,7 @@ func retrieverCoins() (interface{}, error) {
 }
 
 func getAndSaveFromAPI(cryptoCur []string) (interface{}, error) {
-	bufferForNotif := []database.DictCrypto{}      // Буфер для посыла в нотификатор
+	bufferForNotif := database.DictCrypto{}        // Буфер для посыла в нотификатор
 	bufferForNotifMap := make(map[int]interface{}) // Буфер для посыла в нотификатор
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest", nil)
@@ -137,7 +137,7 @@ func getAndSaveFromAPI(cryptoCur []string) (interface{}, error) {
 		// Поиск индекса найденной валюты и её удаление из массива needFind
 		cryptoCur = models.FindCellAndDelete(cryptoCur, qla.QuotesLatestAnswerResults[i].Symbol)
 		// Добавление в буфер
-		bufferForNotif = append(bufferForNotif, database.DictCrypto{
+		bufferForNotif = database.DictCrypto{
 			Id:              0,
 			Timestamp:       time.Now(),
 			CryptoId:        qla.QuotesLatestAnswerResults[i].Id,
@@ -146,7 +146,7 @@ func getAndSaveFromAPI(cryptoCur []string) (interface{}, error) {
 			CryptoUpdate:    time.Now(),
 			Active:          true,
 			CryptoCounter:   0,
-		})
+		}
 		bufferForNotifMap[qla.QuotesLatestAnswerResults[i].Id] = bufferForNotif
 	}
 	// Есть не найденная криптовалюта

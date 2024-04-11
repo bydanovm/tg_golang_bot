@@ -3,6 +3,8 @@ package database
 import (
 	"fmt"
 	"time"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 const (
@@ -118,6 +120,82 @@ func (u *Users) Find() (int, error) {
 
 	return -1, nil
 }
+func (u *Users) GetUserName(idUsr int) (string, error) {
+	// Проверка на кеш
+	if idUsr == u.IdUsr {
+		return u.NameUsr, nil
+	}
+	// Если не закешировано, то новый поиск
+	expLst := []Expressions{
+		{Key: "idusr",
+			Operator: EQ,
+			Value:    `'` + fmt.Sprintf("%v", idUsr) + `'`},
+	}
+	rs, find, _, err := ReadDataRow(&Users{}, expLst, 1)
+	if err != nil {
+		return "", fmt.Errorf("GetUserName:" + err.Error())
+	}
+
+	if find {
+		for _, subRs := range rs {
+			mapstructure.Decode(subRs, &u)
+		}
+		return u.NameUsr, nil
+	}
+
+	return "", nil
+}
+
+func (u *Users) GetChatId(idUsr int) (int64, error) {
+	// Проверка на кеш
+	if idUsr == u.IdUsr {
+		return u.ChatIdUsr, nil
+	}
+	// Если не закешировано, то новый поиск
+	expLst := []Expressions{
+		{Key: "idusr",
+			Operator: EQ,
+			Value:    `'` + fmt.Sprintf("%v", idUsr) + `'`},
+	}
+	rs, find, _, err := ReadDataRow(&Users{}, expLst, 1)
+	if err != nil {
+		return 0, fmt.Errorf("GetChatId:" + err.Error())
+	}
+
+	if find {
+		for _, subRs := range rs {
+			mapstructure.Decode(subRs, &u)
+		}
+		return u.ChatIdUsr, nil
+	}
+	return 0, nil
+}
+
+// Получение First+Last name
+func (u *Users) GetFLName(idUsr int) (string, error) {
+	// Проверка на кеш
+	if idUsr == u.IdUsr {
+		return u.FirstName + " " + u.LastName, nil
+	}
+	// Если не закешировано, то новый поиск
+	expLst := []Expressions{
+		{Key: "idusr",
+			Operator: EQ,
+			Value:    `'` + fmt.Sprintf("%v", idUsr) + `'`},
+	}
+	rs, find, _, err := ReadDataRow(&Users{}, expLst, 1)
+	if err != nil {
+		return "", fmt.Errorf("GetFLName:" + err.Error())
+	}
+
+	if find {
+		for _, subRs := range rs {
+			mapstructure.Decode(subRs, &u)
+		}
+		return u.FirstName + " " + u.LastName, nil
+	}
+	return "", nil
+}
 
 // Добавление пользователя в базу
 func (u *Users) Add() (int, error) {
@@ -142,17 +220,48 @@ type Limits struct {
 	UserId      int       `sql_type:"INTEGER REFERENCES Users (idUsr)"`
 }
 type TypeTrackingCrypto struct {
-	IdTypTrkCrp    int    `sql_type:"SERIAL PRIMARY KEY"`
-	NameTypeTrkCrp string `sql_type:"TEXT"`
-	ModeTypTrkCrp  string `sql_type:"TEXT"`
+	IdTypTrkCrp       int    `sql_type:"SERIAL PRIMARY KEY"`
+	NameTypeTrkCrp    string `sql_type:"TEXT NOT NULL UNIQUE"`
+	DescTypTrkCrp     string `sql_type:"TEXT NOT NULL"`
+	RisingTypTrkCrp   bool   `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
+	CalcProcTypTrkCrp bool   `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
 }
 type TrackingCrypto struct {
 	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY"`
-	ValTrkCrp   float32 `sql_type:"NUMERIC(15,9)"`
+	ValTrkCrp   float32 `sql_type:"NUMERIC(19,9)"`
 	TypTrkCrpId int     `sql_type:"INTEGER REFERENCES TypeTrackingCrypto (idTypTrkCrp)"`
 	DctCrpId    int     `sql_type:"INTEGER REFERENCES DictCrypto (CryptoId)"`
 	UserId      int     `sql_type:"INTEGER REFERENCES Users (idUsr)"`
 }
+
+func (t *TrackingCrypto) GetTypeInfo() (interface{}, error) {
+	// Возможно нужно один раз запустить и держать в кеше
+	// Обновлять при обновлении настроек
+	expLst := []Expressions{
+		{Key: "IdTypTrkCrp", Operator: EQ, Value: fmt.Sprintf("%v", t.IdTrkCrp)},
+	}
+	rs, find, _, err := ReadDataRow(&TypeTrackingCrypto{}, expLst, 1)
+	if err != nil {
+		return nil, fmt.Errorf("GetTypeMode:" + err.Error())
+	}
+	if !find {
+		return nil, fmt.Errorf("GetTypeMode:not find type")
+	}
+	for _, subRs := range rs {
+		subFields := TypeTrackingCrypto{}
+		mapstructure.Decode(subRs, &subFields)
+		return subFields, nil
+	}
+
+	return nil, nil
+}
+
+func (t *TrackingCrypto) GetTypeForUser() error {
+
+	return nil
+}
+
+// Типы не связанные с таблицами
 type Expressions struct {
 	Key      string
 	Operator string

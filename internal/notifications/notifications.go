@@ -35,10 +35,10 @@ func RunNotification(
 // Выходой интерфейс со структурой:
 // 1 - ИД Пользователя
 // 2 - Имя пользователя
-// 2 - ИД чата
-// 3 - ИД КВ
-// 3 - Имя КВ
-// 4 - Событие
+// 3 - ИД чата
+// 4 - ИД КВ
+// 5 - Имя КВ
+// 6 - Событие
 func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 	notifCCStruct := []NotificationsCCStruct{}
 
@@ -69,25 +69,45 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 		}
 		mapstructure.Decode(v[subFields.DctCrpId], &dictCryptos)
 
+		// Получаем инфу о типе отслеживания
+		typeInfo, err := subFields.GetTypeInfo()
+		if err != nil {
+			return nil, fmt.Errorf("notificationsCC:" + err.Error())
+		}
+		_, ok = typeInfo.(database.TypeTrackingCrypto)
+		if !ok {
+			return nil, fmt.Errorf("notificationsCC:error convert interface to struct")
+		}
+		// Получаем имя юзера
+		user := database.Users{}
+		userName, err := user.GetUserName(subFields.UserId)
+		if err != nil {
+			return nil, fmt.Errorf("notificationsCC:" + err.Error())
+		}
+		// Получаем номер чата с пользователем
+		chatIdUsr, err := user.GetChatId(subFields.UserId)
+		if err != nil {
+			return nil, fmt.Errorf("notificationsCC:" + err.Error())
+		}
+		// Узнаем разность
 		diff := dictCryptos.CryptoLastPrice - subFields.ValTrkCrp
-		var event string
-		// Проведем вычисления над КВ
-		if diff < 0 && subFields.TypTrkCrpId == 1 { // Поднялась на N под пунктов (пп)
-			event = "превышение"
-		} else if diff > 0 && subFields.TypTrkCrpId == 2 { // Опустилась на N под пунктов (пп)
-			event = "понижение"
+
+		if diff >= 0 && typeInfo.(database.TypeTrackingCrypto).RisingTypTrkCrp { // Поднялась на N под пунктов (пп)
+			// Какая-то проверка
+		} else if diff < 0 && !typeInfo.(database.TypeTrackingCrypto).RisingTypTrkCrp { // Опустилась на N под пунктов (пп)
+			// Какая-то проверка
 		} else {
 			continue
 		}
 
 		notifCCStruct = append(notifCCStruct, NotificationsCCStruct{
 			subFields.UserId,
-			"NameUsr",
-			0,
+			userName,
+			chatIdUsr,
 			subFields.DctCrpId,
 			dictCryptos.CryptoName,
-			fmt.Sprintf("Произошло событие на криптовалютой %s: %s %v USD",
-				dictCryptos.CryptoName, event, subFields.ValTrkCrp),
+			fmt.Sprintf("Произошло событие над криптовалютой %s:\n"+typeInfo.(database.TypeTrackingCrypto).DescTypTrkCrp+" на %.3fUSD",
+				dictCryptos.CryptoName, subFields.ValTrkCrp, "USD", diff),
 		})
 	}
 

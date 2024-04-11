@@ -6,10 +6,27 @@ CREATE SEQUENCE typetrackingcrypto_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 214748
 
 CREATE TABLE "public"."typetrackingcrypto" (
     "idtyptrkcrp" integer DEFAULT nextval('typetrackingcrypto_id_seq') NOT NULL,
-    "nametypetrkcrp" TEXT NOT NULL,
-    "modetyptrkcrp" TEXT NOT NULL,
+    "nametypetrkcrp" TEXT NOT NULL UNIQUE,
+    "desctyptrkcrp" TEXT NOT NULL,
+    "risingtyptrkcrp" BOOLEAN NOT NULL DEFAULT FALSE,
+    "calcproctyptrkcrp" BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT "typetrackingcrypto_pkey" PRIMARY KEY ("idtyptrkcrp")
 ) WITH (oids = false);
+
+-- Добавление начальных типов отслеживания КВ
+MERGE INTO public.typetrackingcrypto as t
+USING (VALUES (1,'RAISE_V','Превышение свыше %.3f %s (вычисление по значению)',  true, false),
+              (2,'FALL_V','Падение ниже %.3f %s (вычисление по значению)',      false,true),
+              (3,'RAISE_P','Превышение свыше %.0f %s (вычисление по проценту)',true, false),
+              (4,'FALL_P','Падение ниже %.0f %s (вычисление по проценту)',    false,true))
+    s (idtyptrkcrp, nametypetrkcrp, desctyptrkcrp, risingtyptrkcrp, calcproctyptrkcrp)
+    ON t.idtyptrkcrp = s.idtyptrkcrp
+WHEN MATCHED THEN 
+    UPDATE SET (idtyptrkcrp, nametypetrkcrp, desctyptrkcrp, risingtyptrkcrp, calcproctyptrkcrp) =
+            (s.idtyptrkcrp, s.nametypetrkcrp, s.desctyptrkcrp, s.risingtyptrkcrp, s.calcproctyptrkcrp)
+WHEN NOT MATCHED THEN
+    INSERT (idtyptrkcrp, nametypetrkcrp, desctyptrkcrp, risingtyptrkcrp, calcproctyptrkcrp)
+    VALUES (s.idtyptrkcrp, s.nametypetrkcrp, s.desctyptrkcrp, s.risingtyptrkcrp, s.calcproctyptrkcrp);
 
 DROP TABLE IF EXISTS "trackingcrypto" CASCADE;
 DROP SEQUENCE IF EXISTS trackingcrypto_id_seq;
@@ -17,7 +34,7 @@ CREATE SEQUENCE trackingcrypto_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647
 
 CREATE TABLE "public"."trackingcrypto" (
     "idtrkcrp" integer DEFAULT nextval('trackingcrypto_id_seq') NOT NULL,
-    "valtrkcrp" NUMERIC(15,0) DEFAULT 0,
+    "valtrkcrp" NUMERIC(19,9) DEFAULT 0,
     "typtrkcrpid" INTEGER, 
     "dctcrpid" INTEGER,
     "userid" INTEGER,
@@ -29,3 +46,14 @@ CREATE TABLE "public"."trackingcrypto" (
     CONSTRAINT "trackingcrypto_users_fkey" FOREIGN KEY("userid")
         REFERENCES "public"."users"("idusr")
 ) WITH (oids = false);
+
+MERGE INTO public.trackingcrypto as t
+USING (VALUES (1, 68300.0, 1, 1, 786751823))
+    s (idtrkcrp, valtrkcrp, typtrkcrpid, dctcrpid, userid)
+    ON t.idtrkcrp = s.idtrkcrp
+WHEN MATCHED THEN 
+    UPDATE SET (idtrkcrp, valtrkcrp, typtrkcrpid, dctcrpid, userid) =
+            (s.idtrkcrp, s.valtrkcrp, s.typtrkcrpid, s.dctcrpid, s.userid)
+WHEN NOT MATCHED THEN
+    INSERT (idtrkcrp, valtrkcrp, typtrkcrpid, dctcrpid, userid)
+    VALUES (s.idtrkcrp, s.valtrkcrp, s.typtrkcrpid, s.dctcrpid, s.userid);

@@ -1,6 +1,6 @@
 BEGIN;
     MERGE INTO public.SettingsProject as t
-    USING (VALUES('TMR_RESP_RTV','Время опроса ретривера',true,'int','300'))
+    USING (VALUES('TMR_RESP_RTV','Время опроса ретривера',true,'int','600'))
         s (NAME, DESCRIPTION, ACTIVE, TYPE, VALUE)
         ON t.NAME = s.NAME
     WHEN MATCHED THEN 
