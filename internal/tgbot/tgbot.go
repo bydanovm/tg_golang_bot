@@ -102,6 +102,8 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 					bot.Send(msg)
 				}
 			default:
+				// Проверяем лимит на запросы пользователя
+
 				message := coinmarketcup.GetLatest(update.Message.Text)
 				// message := wiki.WikipediaGET(update.Message.Text)
 				if os.Getenv("DB_SWITCH") == "on" {

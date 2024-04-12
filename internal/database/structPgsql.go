@@ -207,7 +207,8 @@ func (u *Users) Add() (int, error) {
 
 type LimitsDict struct {
 	IdLmtDct   int    `sql_type:"SERIAL PRIMARY KEY"`
-	NameLmtDct string `sql_type:"TEXT"`
+	NameLmtDct string `sql_type:"TEXT NOT NULL UNIQUE"`
+	DescLmtDct string `sql_type:"TEXT NOT NULL"`
 	StdValLmt  int    `sql_type:"INTEGER DEFAULT 0"`
 }
 type Limits struct {
@@ -218,7 +219,77 @@ type Limits struct {
 	TsLmtOn     time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 	TsLmtOff    time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 	UserId      int       `sql_type:"INTEGER REFERENCES Users (idUsr)"`
+	LtmDctId    int       `sql_type:"INTEGER REFERENCES LimitsDict (idLmtDct)"`
 }
+
+// Функция заполнения лимита по имени лимита и ИД пользователя
+func (l *Limits) GetLimit(nameLmt string, usrId int) error {
+	// Поиск ИД лимита по имени лимита
+	expLst := []Expressions{
+		{Key: "NameLmtDct",
+			Operator: EQ,
+			Value:    `'` + fmt.Sprintf("%v", nameLmt) + `'`},
+	}
+	rs, find, _, err := ReadDataRow(&LimitsDict{}, expLst, 1)
+	if err != nil {
+		return fmt.Errorf("GetLimit:" + err.Error())
+	}
+	lmtDct := LimitsDict{}
+	if find {
+		for _, subRs := range rs {
+			mapstructure.Decode(subRs, &lmtDct)
+		}
+	} else {
+		return fmt.Errorf("GetLimit:Limit type not found")
+	}
+	// Поиск лимита по ИД лимита и пользователю
+	expLst = []Expressions{
+		{Key: "UserId",
+			Operator: EQ,
+			Value:    `'` + fmt.Sprintf("%v", usrId) + `'`},
+		{Key: "LtmDctId",
+			Operator: EQ,
+			Value:    `'` + fmt.Sprintf("%v", lmtDct.IdLmtDct) + `'`},
+	}
+	rs, find, _, err = ReadDataRow(&Limits{}, expLst, 1)
+	if err != nil {
+		return fmt.Errorf("GetLimit:" + err.Error())
+	}
+	if find {
+		for _, subRs := range rs {
+			mapstructure.Decode(subRs, &l)
+		}
+	} else {
+		return fmt.Errorf("GetLimit:Limit %s for user %v not found", lmtDct.NameLmtDct, l.UserId)
+	}
+
+	return nil
+}
+
+// Функция инкрементации лимитированного значения и возврата оставщегося лимита
+func (l *Limits) IncrLimit(valIncr int) (int, error) {
+	if l.IdLmt == 0 {
+		return 0, fmt.Errorf("IncrLimit:Limit not initialised")
+	}
+	if l.ValAvailLmt == l.ValUsedLmt {
+		return 0, nil
+	}
+	l.ValUsedLmt += valIncr
+
+	// Обновляем поле в БД
+	data := map[string]string{
+		"ValUsedLmt": fmt.Sprintf("%v", l.ValUsedLmt),
+	}
+	expLst := []Expressions{
+		{Key: "IdLmt", Operator: EQ, Value: `'` + fmt.Sprintf("%v", l.IdLmt) + `'`},
+	}
+	if err := UpdateData("Limits", data, expLst); err != nil {
+		return 0, fmt.Errorf("IncrLimit:" + err.Error())
+	}
+
+	return l.ValAvailLmt - l.ValUsedLmt, nil
+}
+
 type TypeTrackingCrypto struct {
 	IdTypTrkCrp       int    `sql_type:"SERIAL PRIMARY KEY"`
 	NameTypeTrkCrp    string `sql_type:"TEXT NOT NULL UNIQUE"`
@@ -229,6 +300,7 @@ type TypeTrackingCrypto struct {
 type TrackingCrypto struct {
 	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY"`
 	ValTrkCrp   float32 `sql_type:"NUMERIC(19,9)"`
+	OnTrkCrp    bool    `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
 	TypTrkCrpId int     `sql_type:"INTEGER REFERENCES TypeTrackingCrypto (idTypTrkCrp)"`
 	DctCrpId    int     `sql_type:"INTEGER REFERENCES DictCrypto (CryptoId)"`
 	UserId      int     `sql_type:"INTEGER REFERENCES Users (idUsr)"`
@@ -258,6 +330,23 @@ func (t *TrackingCrypto) GetTypeInfo() (interface{}, error) {
 
 func (t *TrackingCrypto) GetTypeForUser() error {
 
+	return nil
+}
+func (t *TrackingCrypto) OffTracking() error {
+	if t.IdTrkCrp == 0 {
+		return fmt.Errorf("OffTracking:tracking not initialised")
+	}
+	t.OnTrkCrp = false
+	// Обновляем поле в БД
+	data := map[string]string{
+		"OnTrkCrp": fmt.Sprintf("%v", t.OnTrkCrp),
+	}
+	expLst := []Expressions{
+		{Key: "IdTrkCrp", Operator: EQ, Value: `'` + fmt.Sprintf("%v", t.IdTrkCrp) + `'`},
+	}
+	if err := UpdateData("TrackingCrypto", data, expLst); err != nil {
+		return fmt.Errorf("OffTracking:" + err.Error())
+	}
 	return nil
 }
 

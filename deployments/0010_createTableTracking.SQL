@@ -35,6 +35,7 @@ CREATE SEQUENCE trackingcrypto_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647
 CREATE TABLE "public"."trackingcrypto" (
     "idtrkcrp" integer DEFAULT nextval('trackingcrypto_id_seq') NOT NULL,
     "valtrkcrp" NUMERIC(19,9) DEFAULT 0,
+    "ontrkcrp" BOOLEAN NOT NULL DEFAULT FALSE,
     "typtrkcrpid" INTEGER, 
     "dctcrpid" INTEGER,
     "userid" INTEGER,
@@ -48,12 +49,12 @@ CREATE TABLE "public"."trackingcrypto" (
 ) WITH (oids = false);
 
 MERGE INTO public.trackingcrypto as t
-USING (VALUES (1, 68300.0, 1, 1, 786751823))
-    s (idtrkcrp, valtrkcrp, typtrkcrpid, dctcrpid, userid)
+USING (VALUES (1, 68300.0, true, 1, 1, 786751823))
+    s (idtrkcrp, valtrkcrp, ontrkcrp, typtrkcrpid, dctcrpid, userid)
     ON t.idtrkcrp = s.idtrkcrp
 WHEN MATCHED THEN 
-    UPDATE SET (idtrkcrp, valtrkcrp, typtrkcrpid, dctcrpid, userid) =
-            (s.idtrkcrp, s.valtrkcrp, s.typtrkcrpid, s.dctcrpid, s.userid)
+    UPDATE SET (idtrkcrp, valtrkcrp, ontrkcrp, typtrkcrpid, dctcrpid, userid) =
+            (s.idtrkcrp, s.valtrkcrp, s.ontrkcrp, s.typtrkcrpid, s.dctcrpid, s.userid)
 WHEN NOT MATCHED THEN
-    INSERT (idtrkcrp, valtrkcrp, typtrkcrpid, dctcrpid, userid)
-    VALUES (s.idtrkcrp, s.valtrkcrp, s.typtrkcrpid, s.dctcrpid, s.userid);
+    INSERT (idtrkcrp, valtrkcrp, ontrkcrp, typtrkcrpid, dctcrpid, userid)
+    VALUES (s.idtrkcrp, s.valtrkcrp, s.ontrkcrp, s.typtrkcrpid, s.dctcrpid, s.userid);

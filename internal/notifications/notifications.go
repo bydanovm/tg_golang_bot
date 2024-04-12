@@ -43,15 +43,12 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 	notifCCStruct := []NotificationsCCStruct{}
 
 	// Определим для каждого отслеживания, было ли событие
-	fields := database.TrackingCrypto{}
-	expLst := []database.Expressions{}
-
-	// Выбираем все записи из таблицы
-	expLst = append(expLst, database.Expressions{
-		Key: "IdTrkCrp", Operator: database.NotEQ, Value: `'0'`,
-	})
-
-	rs, find, _, err := database.ReadDataRow(&fields, expLst, 0)
+	// Выбираем все записи из таблицы с включенным отслеживанием
+	expLst := []database.Expressions{
+		{Key: "IdTrkCrp", Operator: database.NotEQ, Value: `'0'`},
+		{Key: "OnTrkCrp", Operator: database.EQ, Value: `true`},
+	}
+	rs, find, _, err := database.ReadDataRow(&database.TrackingCrypto{}, expLst, 0)
 	if err != nil {
 		return nil, fmt.Errorf("notificationsCC:" + err.Error())
 	}
@@ -68,7 +65,15 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 			return nil, fmt.Errorf("notificationsCC:error convert interface to map[int]interface")
 		}
 		mapstructure.Decode(v[subFields.DctCrpId], &dictCryptos)
-
+		// Получаем лимит и увеличиваем его
+		lmt := database.Limits{}
+		if err := lmt.GetLimit("LMT003", subFields.UserId); err != nil {
+			return nil, fmt.Errorf("notificationsCC:" + err.Error())
+		}
+		avalLmt, err := lmt.IncrLimit(1)
+		if err != nil {
+			return nil, fmt.Errorf("notificationsCC:" + err.Error())
+		}
 		// Получаем инфу о типе отслеживания
 		typeInfo, err := subFields.GetTypeInfo()
 		if err != nil {
@@ -77,6 +82,12 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 		_, ok = typeInfo.(database.TypeTrackingCrypto)
 		if !ok {
 			return nil, fmt.Errorf("notificationsCC:error convert interface to struct")
+		}
+		// Если лимит будет исчерпан, отключаем отслеживание
+		if avalLmt == 0 {
+			if err := subFields.OffTracking(); err != nil {
+				return nil, fmt.Errorf("notificationsCC:" + err.Error())
+			}
 		}
 		// Получаем имя юзера
 		user := database.Users{}
@@ -106,9 +117,22 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 			chatIdUsr,
 			subFields.DctCrpId,
 			dictCryptos.CryptoName,
-			fmt.Sprintf("Произошло событие над криптовалютой %s:\n"+typeInfo.(database.TypeTrackingCrypto).DescTypTrkCrp+" на %.3fUSD",
-				dictCryptos.CryptoName, subFields.ValTrkCrp, "USD", diff),
+			fmt.Sprintf("Произошло событие над криптовалютой %s:\n"+
+				typeInfo.(database.TypeTrackingCrypto).DescTypTrkCrp+
+				" на %.3fUSD\nОсталось уведомлений для данного события: %v",
+				dictCryptos.CryptoName, subFields.ValTrkCrp, "USD", diff, avalLmt),
 		})
+		if avalLmt == 0 {
+			notifCCStruct = append(notifCCStruct, NotificationsCCStruct{
+				subFields.UserId,
+				userName,
+				chatIdUsr,
+				subFields.DctCrpId,
+				dictCryptos.CryptoName,
+				fmt.Sprint("Вы можете продлить, изменить и продлить данное отслеживание" +
+					" или создать новое отслеживание"),
+			})
+		}
 	}
 
 	return notifCCStruct, nil
