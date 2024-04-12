@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/mbydanov/tg_golang_bot/internal/coinmarketcup"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 	"github.com/mbydanov/tg_golang_bot/internal/notifications"
-	"github.com/mbydanov/tg_golang_bot/internal/services"
 
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 )
@@ -68,17 +68,37 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 		if update.Message == nil {
 			continue
 		}
-		// Проверяем есть ли пользователь в базе
-		if err := services.CheckUser(update.Message); err != nil {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, err.Error())
-			bot.Send(msg)
+		// Проверяем есть ли пользователь в кеше или базе
+		if _, ok := database.UsersCache[update.Message.From.ID]; !ok {
+			// Пользователь не в кеше, ищем в БД, если не находим, то добавляем нового
+			// Единственная точка входа, где пользователь может добавиться в БД
+			user := database.Users{
+				IdUsr:     update.Message.From.ID,
+				TsUsr:     time.Now(),
+				NameUsr:   update.Message.From.UserName,
+				FirstName: update.Message.From.FirstName,
+				LastName:  update.Message.From.LastName,
+				LangCode:  update.Message.From.LanguageCode,
+				IsBot:     update.Message.From.IsBot,
+				IsBanned:  false,
+				ChatIdUsr: update.Message.Chat.ID,
+				IdLvlSec:  5}
+			// Поиск с последующим добавлением
+			if err := user.CheckUser(); err != nil {
+				// Отправляем сообщение в лог об ошибке
+			}
+			database.UsersCache[update.Message.From.ID] = user
 		}
+		// if err := services.CheckUser(update.Message); err != nil {
+		// 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, err.Error())
+		// 	bot.Send(msg)
+		// }
 		// Проверяем что от пользователя пришло именно текстовое сообщение
 		if reflect.TypeOf(update.Message.Text).Kind() == reflect.String && update.Message.Text != "" {
 			switch update.Message.Text {
 			case "/start":
 				// Отправлем сообщение
-				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Hi, i'm a bot.")
+				msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, "Hi, i'm a bot.")
 				bot.Send(msg)
 			case "/number_of_users":
 				if os.Getenv("DB_SWITCH") == "on" {
@@ -86,7 +106,7 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 					num, err := database.GetNumberOfUsers()
 					if err != nil {
 						//Отправлем сообщение
-						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Database error.")
+						msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, "Database error.")
 						bot.Send(msg)
 					}
 
@@ -94,24 +114,25 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 					ans := fmt.Sprintf("%d peoples used me", num)
 
 					// Отправлем сообщение
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, ans)
+					msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, ans)
 					bot.Send(msg)
 				} else {
 					// Отправлем сообщение
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Database not connected, so i can't say you how many peoples used me.")
+					msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, "Database not connected, so i can't say you how many peoples used me.")
 					bot.Send(msg)
 				}
 			default:
-				// Проверяем лимит на запросы пользователя
+				// Проверяем лимит на запросы конкретного пользователя
 
 				message := coinmarketcup.GetLatest(update.Message.Text)
 				// message := wiki.WikipediaGET(update.Message.Text)
 				if os.Getenv("DB_SWITCH") == "on" {
 					// Отправляем username, chat_id, message, answer в БД
-					if err := database.CollectData(update.Message.Chat.UserName, update.Message.Chat.ID, update.Message.Text, message); err != nil {
+					if err := database.CollectData(database.UsersCache[update.Message.From.ID].NameUsr,
+						database.UsersCache[update.Message.From.ID].ChatIdUsr, update.Message.Text, message); err != nil {
 
 						// Отправлем сообщение
-						msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Database error, but bot still working.")
+						msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, "Database error, but bot still working.")
 						bot.Send(msg)
 					}
 				}
@@ -120,13 +141,13 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 				for _, val := range message {
 
 					// Отправлем сообщение
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, val)
+					msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, val)
 					bot.Send(msg)
 				}
 			}
 		} else {
 			// Отправлем сообщение
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Use the words for search.")
+			msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, "Use the words for search.")
 			bot.Send(msg)
 		}
 	}

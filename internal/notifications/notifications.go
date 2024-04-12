@@ -89,14 +89,21 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 				return nil, fmt.Errorf("notificationsCC:" + err.Error())
 			}
 		}
+		// Кешируем пользователя
+		if err := database.UsersCache.CheckCache(subFields.UserId); err != nil {
+			return nil, fmt.Errorf("notificationsCC:" + err.Error())
+		}
 		// Получаем имя юзера
-		user := database.Users{}
-		userName, err := user.GetUserName(subFields.UserId)
+		user, err := database.UsersCache.GetCache(subFields.UserId)
+		if err != nil {
+			return nil, fmt.Errorf("notificationsCC:" + err.Error())
+		}
+		userName, err := user.GetUserName()
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
 		// Получаем номер чата с пользователем
-		chatIdUsr, err := user.GetChatId(subFields.UserId)
+		chatIdUsr, err := user.GetChatId()
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
@@ -107,6 +114,7 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 			// Какая-то проверка
 		} else if diff < 0 && !typeInfo.(database.TypeTrackingCrypto).RisingTypTrkCrp { // Опустилась на N под пунктов (пп)
 			// Какая-то проверка
+			diff *= -1
 		} else {
 			continue
 		}

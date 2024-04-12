@@ -98,6 +98,40 @@ type Users struct {
 	IdLvlSec  int       `sql_type:"INTEGER REFERENCES levelssecure (idlvlsec)"`
 }
 
+func (u *Users) CheckUser() error {
+	if u.IdUsr == 0 {
+		return fmt.Errorf("CheckUser:Field IdUsr is empty")
+	}
+	idUser, err := u.Find()
+	if err != nil {
+		return fmt.Errorf("CheckUser:" + err.Error())
+	}
+	if idUser < 0 {
+		// Если пользователя нет в базе - добавляем
+		_, err = u.Add()
+		if err != nil {
+			return fmt.Errorf("CheckUser:" + err.Error())
+		}
+	} else {
+		// Иначе - считываем
+		expLst := []Expressions{
+			{Key: "idusr",
+				Operator: EQ,
+				Value:    `'` + fmt.Sprintf("%v", u.IdUsr) + `'`},
+		}
+		rs, find, _, err := ReadDataRow(&Users{}, expLst, 1)
+		if err != nil {
+			return fmt.Errorf("CheckUser:" + err.Error())
+		}
+		if find {
+			for _, subRs := range rs {
+				mapstructure.Decode(subRs, &u)
+			}
+		}
+	}
+	return nil
+}
+
 // Поиск пользователя в базе
 func (u *Users) Find() (int, error) {
 	fields := Users{}
@@ -120,85 +154,49 @@ func (u *Users) Find() (int, error) {
 
 	return -1, nil
 }
-func (u *Users) GetUserName(idUsr int) (string, error) {
+func (u *Users) GetUserName() (string, error) {
 	// Проверка на кеш
-	if idUsr == u.IdUsr {
+	if u.IdUsr != 0 {
 		return u.NameUsr, nil
 	}
 	// Если не закешировано, то новый поиск
-	expLst := []Expressions{
-		{Key: "idusr",
-			Operator: EQ,
-			Value:    `'` + fmt.Sprintf("%v", idUsr) + `'`},
-	}
-	rs, find, _, err := ReadDataRow(&Users{}, expLst, 1)
-	if err != nil {
+	if err := u.CheckUser(); err != nil {
 		return "", fmt.Errorf("GetUserName:" + err.Error())
 	}
-
-	if find {
-		for _, subRs := range rs {
-			mapstructure.Decode(subRs, &u)
-		}
-		return u.NameUsr, nil
-	}
-
-	return "", nil
+	return u.NameUsr, nil
 }
 
-func (u *Users) GetChatId(idUsr int) (int64, error) {
+func (u *Users) GetChatId() (int64, error) {
 	// Проверка на кеш
-	if idUsr == u.IdUsr {
+	if u.IdUsr != 0 {
 		return u.ChatIdUsr, nil
 	}
 	// Если не закешировано, то новый поиск
-	expLst := []Expressions{
-		{Key: "idusr",
-			Operator: EQ,
-			Value:    `'` + fmt.Sprintf("%v", idUsr) + `'`},
-	}
-	rs, find, _, err := ReadDataRow(&Users{}, expLst, 1)
-	if err != nil {
+	if err := u.CheckUser(); err != nil {
 		return 0, fmt.Errorf("GetChatId:" + err.Error())
 	}
-
-	if find {
-		for _, subRs := range rs {
-			mapstructure.Decode(subRs, &u)
-		}
-		return u.ChatIdUsr, nil
-	}
-	return 0, nil
+	return u.ChatIdUsr, nil
 }
 
 // Получение First+Last name
-func (u *Users) GetFLName(idUsr int) (string, error) {
+func (u *Users) GetFLName() (string, error) {
 	// Проверка на кеш
-	if idUsr == u.IdUsr {
+	if u.IdUsr != 0 {
 		return u.FirstName + " " + u.LastName, nil
 	}
 	// Если не закешировано, то новый поиск
-	expLst := []Expressions{
-		{Key: "idusr",
-			Operator: EQ,
-			Value:    `'` + fmt.Sprintf("%v", idUsr) + `'`},
-	}
-	rs, find, _, err := ReadDataRow(&Users{}, expLst, 1)
-	if err != nil {
+	if err := u.CheckUser(); err != nil {
 		return "", fmt.Errorf("GetFLName:" + err.Error())
 	}
-
-	if find {
-		for _, subRs := range rs {
-			mapstructure.Decode(subRs, &u)
-		}
-		return u.FirstName + " " + u.LastName, nil
-	}
-	return "", nil
+	return u.FirstName + " " + u.LastName, nil
 }
 
 // Добавление пользователя в базу
 func (u *Users) Add() (int, error) {
+	if u.IdUsr == 0 || u.NameUsr == "" || u.FirstName == "" ||
+		u.LangCode == "" || int(u.ChatIdUsr) == 0 || u.IdLvlSec == 0 {
+		return -1, fmt.Errorf("CheckUser:Some field is empty")
+	}
 	if err := WriteDataStruct(u); err != nil {
 		return -1, err
 	}
@@ -310,7 +308,7 @@ func (t *TrackingCrypto) GetTypeInfo() (interface{}, error) {
 	// Возможно нужно один раз запустить и держать в кеше
 	// Обновлять при обновлении настроек
 	expLst := []Expressions{
-		{Key: "IdTypTrkCrp", Operator: EQ, Value: fmt.Sprintf("%v", t.IdTrkCrp)},
+		{Key: "IdTypTrkCrp", Operator: EQ, Value: fmt.Sprintf("%v", t.TypTrkCrpId)},
 	}
 	rs, find, _, err := ReadDataRow(&TypeTrackingCrypto{}, expLst, 1)
 	if err != nil {
