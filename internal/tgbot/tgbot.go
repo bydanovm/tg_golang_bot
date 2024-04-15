@@ -11,6 +11,8 @@ import (
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 	"github.com/mbydanov/tg_golang_bot/internal/notifications"
+	"github.com/mbydanov/tg_golang_bot/internal/services"
+	"github.com/sirupsen/logrus"
 
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 )
@@ -21,7 +23,7 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 	// Создаем бота
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TOKEN"))
 	if err != nil {
-		panic(err)
+		services.Logging.Panic(err.Error())
 	}
 
 	// Устанавливаем время обновления
@@ -37,6 +39,7 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 				if val.MsgError != nil {
 					msg := tgbotapi.NewMessage(chatID, val.MsgError.Error())
 					bot.Send(msg)
+					services.Logging.Error(val.MsgError.Error())
 				}
 			}
 		}
@@ -54,6 +57,9 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 						bot.Send(msg)
 					}
 				}
+				if val.Error != nil {
+					services.Logging.Error(val.Error.Error())
+				}
 			}
 		}
 	}()
@@ -61,7 +67,7 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 	// Получаем обновления от бота
 	updates, err := bot.GetUpdatesChan(u)
 	if err != nil {
-		panic(err)
+		services.Logging.Panic(err.Error())
 	}
 
 	for update := range updates {
@@ -86,6 +92,7 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 			// Поиск с последующим добавлением
 			if err := user.CheckUser(); err != nil {
 				// Отправляем сообщение в лог об ошибке
+				services.Logging.Warn(err.Error())
 			}
 			database.UsersCache[update.Message.From.ID] = user
 		}
@@ -95,6 +102,11 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 		// }
 		// Проверяем что от пользователя пришло именно текстовое сообщение
 		if reflect.TypeOf(update.Message.Text).Kind() == reflect.String && update.Message.Text != "" {
+			// Логируем запрос в лог
+			services.Logging.WithFields(logrus.Fields{
+				"userId":   database.UsersCache[update.Message.From.ID].IdUsr,
+				"userName": database.UsersCache[update.Message.From.ID].NameUsr,
+			}).Info(update.Message.Text)
 			switch update.Message.Text {
 			case "/start":
 				// Отправлем сообщение
@@ -123,7 +135,6 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 				}
 			default:
 				// Проверяем лимит на запросы конкретного пользователя
-
 				message := coinmarketcup.GetLatest(update.Message.Text)
 				// message := wiki.WikipediaGET(update.Message.Text)
 				if os.Getenv("DB_SWITCH") == "on" {
@@ -139,7 +150,11 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 
 				// Проходим через срез и отправляем каждый элемент пользователю
 				for _, val := range message {
-
+					// Логируем ответ бота
+					services.Logging.WithFields(logrus.Fields{
+						"userId":   database.UsersCache[update.Message.From.ID].IdUsr,
+						"userName": database.UsersCache[update.Message.From.ID].NameUsr,
+					}).Info(val)
 					// Отправлем сообщение
 					msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, val)
 					bot.Send(msg)

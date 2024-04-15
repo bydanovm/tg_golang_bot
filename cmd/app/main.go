@@ -10,18 +10,20 @@ import (
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 	"github.com/mbydanov/tg_golang_bot/internal/notifications"
 	retrievercoins "github.com/mbydanov/tg_golang_bot/internal/retrieverCoins"
+	"github.com/mbydanov/tg_golang_bot/internal/services"
 	"github.com/mbydanov/tg_golang_bot/internal/tgbot"
 )
 
 func main() {
 
 	time.Sleep(5 * time.Second)
-
+	// Инициализация логирования
+	services.InitLogger()
 	// Создаем таблицу
 	if os.Getenv("CREATE_TABLE") == "yes" {
 		if os.Getenv("DB_SWITCH") == "on" {
 			if err := database.CreateTables(); err != nil {
-				panic(err)
+				services.Logging.Panic(err.Error())
 			}
 		}
 	}
@@ -37,11 +39,11 @@ func main() {
 	// Кешировние
 	// Кешируем типы отслеживания
 	if err := database.TypeTCCache.CheckAllCache(); err != nil {
-		panic(fmt.Errorf("main:" + err.Error()))
+		services.Logging.Panic(fmt.Errorf("main:" + err.Error()))
 	}
 	// Кешируем активные отслеживания
 	if err := database.TCCache.CheckAllCache(); err != nil {
-		panic(fmt.Errorf("main:" + err.Error()))
+		services.Logging.Panic(fmt.Errorf("main:" + err.Error()))
 	}
 
 	// Функция считывания настроек из канала
