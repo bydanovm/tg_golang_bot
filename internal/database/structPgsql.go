@@ -295,6 +295,48 @@ type TypeTrackingCrypto struct {
 	RisingTypTrkCrp   bool   `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
 	CalcProcTypTrkCrp bool   `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
 }
+
+// Получение всех типов отслеживаний из БД
+func (t *TypeTrackingCrypto) GetAllTypeInfo() ([]interface{}, error) {
+	expLst := []Expressions{
+		{Key: "IdTypTrkCrp", Operator: NotEQ, Value: "0"},
+	}
+	rs, find, _, err := ReadDataRow(&TypeTrackingCrypto{}, expLst, 0)
+	if err != nil {
+		return nil, fmt.Errorf("GetAllTypeInfo:" + err.Error())
+	}
+	if !find {
+		return nil, fmt.Errorf("GetAllTypeInfo:not find types")
+	}
+	res := []interface{}{}
+	subFields := TypeTrackingCrypto{}
+	for _, subRs := range rs {
+		mapstructure.Decode(subRs, &subFields)
+		res = append(res, subFields)
+	}
+
+	return res, nil
+}
+func (t *TypeTrackingCrypto) GetTypeInfo() (interface{}, error) {
+	expLst := []Expressions{
+		{Key: "IdTypTrkCrp", Operator: EQ, Value: fmt.Sprintf("%v", t.IdTypTrkCrp)},
+	}
+	rs, find, _, err := ReadDataRow(&TypeTrackingCrypto{}, expLst, 1)
+	if err != nil {
+		return nil, fmt.Errorf("GetTypeInfo:" + err.Error())
+	}
+	if !find {
+		return nil, fmt.Errorf("GetTypeInfo:not find type")
+	}
+	for _, subRs := range rs {
+		subFields := TypeTrackingCrypto{}
+		mapstructure.Decode(subRs, &subFields)
+		return subFields, nil
+	}
+
+	return nil, nil
+}
+
 type TrackingCrypto struct {
 	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY"`
 	ValTrkCrp   float32 `sql_type:"NUMERIC(19,9)"`

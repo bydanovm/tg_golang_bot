@@ -75,14 +75,14 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
 		// Получаем инфу о типе отслеживания
-		typeInfo, err := subFields.GetTypeInfo()
+		typeInfo, err := database.TypeTCCache.GetCache(subFields.TypTrkCrpId)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
-		_, ok = typeInfo.(database.TypeTrackingCrypto)
-		if !ok {
-			return nil, fmt.Errorf("notificationsCC:error convert interface to struct")
-		}
+		// _, ok = typeInfo.(database.TypeTrackingCrypto)
+		// if !ok {
+		// 	return nil, fmt.Errorf("notificationsCC:error convert interface to struct")
+		// }
 		// Если лимит будет исчерпан, отключаем отслеживание
 		if avalLmt == 0 {
 			if err := subFields.OffTracking(); err != nil {
@@ -110,9 +110,9 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 		// Узнаем разность
 		diff := dictCryptos.CryptoLastPrice - subFields.ValTrkCrp
 
-		if diff >= 0 && typeInfo.(database.TypeTrackingCrypto).RisingTypTrkCrp { // Поднялась на N под пунктов (пп)
+		if diff >= 0 && typeInfo.RisingTypTrkCrp { // Поднялась на N под пунктов (пп)
 			// Какая-то проверка
-		} else if diff < 0 && !typeInfo.(database.TypeTrackingCrypto).RisingTypTrkCrp { // Опустилась на N под пунктов (пп)
+		} else if diff < 0 && !typeInfo.RisingTypTrkCrp { // Опустилась на N под пунктов (пп)
 			// Какая-то проверка
 			diff *= -1
 		} else {
@@ -126,7 +126,7 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 			subFields.DctCrpId,
 			dictCryptos.CryptoName,
 			fmt.Sprintf("Произошло событие над криптовалютой %s:\n"+
-				typeInfo.(database.TypeTrackingCrypto).DescTypTrkCrp+
+				typeInfo.DescTypTrkCrp+
 				" на %.3fUSD\nОсталось уведомлений для данного события: %v",
 				dictCryptos.CryptoName, subFields.ValTrkCrp, "USD", diff, avalLmt),
 		})

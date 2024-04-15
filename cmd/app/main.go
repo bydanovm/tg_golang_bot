@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -33,6 +34,15 @@ func main() {
 	chanNotifTelegram := make(chan models.StatusChannel)
 	// Получение настроек
 	go config.GetConfig(chConfig)
+	// Кешировние
+	// Кешируем типы отслеживания
+	if err := database.TypeTCCache.CheckAllCache(); err != nil {
+		panic(fmt.Errorf("main:" + err.Error()))
+	}
+	// Кешируем активные отслеживания
+	if err := database.TCCache.CheckAllCache(); err != nil {
+		panic(fmt.Errorf("main:" + err.Error()))
+	}
 
 	// Функция считывания настроек из канала
 	go func() {
