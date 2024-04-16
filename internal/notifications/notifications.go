@@ -9,25 +9,30 @@ import (
 )
 
 func RunNotification(
-	retrieverNotifIn chan models.StatusChannel,
-	notifTelegramOut chan models.StatusChannel) {
-	// var chanRetrieverNotifIn models.StatusChannel
+	chanModules chan models.StatusChannel) {
 	for {
 		// Считывание информации из канала от ретривера
-		val, ok := <-retrieverNotifIn
+		v, ok := <-chanModules
 		if ok {
-			if val.Start {
-				var charNotifTelegramOut models.StatusChannel
+			// Прием ответа от ретривера
+			if v.Module == models.RetrieverCoins && v.Start {
 				// Функция работы с уведомлениями по КВ
-				if res, err := notificationsCC(val.Data); err != nil {
+				if res, err := notificationsCC(v.Data); err != nil {
 					// Запись в канал об ошибке
-					charNotifTelegramOut.Error = err
-				} else {
+					v.Error = err
+				} else if res != nil {
 					// Здесь будет запись в канал
-					charNotifTelegramOut.Data = res
+					v.Start = true
+					v.Data = res
+				} else {
+					// Если ничего не найдено
+					v.Start = false
+					v.Data = nil
 				}
-				notifTelegramOut <- charNotifTelegramOut
+				v.Module = models.Notificator
 			}
+			// Если ответ не от ретривера то записать инфу обратно в канал
+			chanModules <- v
 		}
 	}
 }
@@ -53,7 +58,7 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 		return nil, fmt.Errorf("notificationsCC:" + err.Error())
 	}
 	if !find {
-		return nil, fmt.Errorf("notificationsCC:not find record")
+		return nil, nil
 	}
 	for _, subRs := range rs {
 		subFields := database.TrackingCrypto{}

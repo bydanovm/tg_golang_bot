@@ -18,8 +18,7 @@ import (
 )
 
 // Создаем бота
-func TelegramBot(statusRetriever chan models.StatusRetriever,
-	notifTelegramIn chan models.StatusChannel) {
+func TelegramBot(chanModules chan models.StatusChannel) {
 	// Создаем бота
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TOKEN"))
 	if err != nil {
@@ -30,35 +29,44 @@ func TelegramBot(statusRetriever chan models.StatusRetriever,
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	// Функция отправки сообщения об ошибке из внешних сервисов
-	go func(chatID int64) {
-		for {
-			// Отправляем сообщение об ошибке
-			val, ok := <-statusRetriever
-			if ok {
-				if val.MsgError != nil {
-					msg := tgbotapi.NewMessage(chatID, val.MsgError.Error())
-					bot.Send(msg)
-					services.Logging.Error(val.MsgError.Error())
-				}
-			}
-		}
-	}(786751823)
+	// // Функция отправки сообщения об ошибке из внешних сервисов
+	// go func(chatID int64) {
+	// 	for {
+	// 		// Отправляем сообщение об ошибке
+	// 		val, ok := <-statusRetriever
+	// 		if ok {
+	// 			if val.MsgError != nil {
+	// 				msg := tgbotapi.NewMessage(chatID, val.MsgError.Error())
+	// 				bot.Send(msg)
+	// 				services.Logging.Error(val.MsgError.Error())
+	// 			}
+	// 		}
+	// 	}
+	// }(786751823)
 
-	// Функция получения сообщения от нотификатора
+	// Функция получения сообщений от модулей
 	go func() {
 		for {
-			val, ok := <-notifTelegramIn
+			v, ok := <-chanModules
 			if ok {
-				arr, ok := val.Data.([]notifications.NotificationsCCStruct)
-				if ok {
-					for _, v := range arr {
-						msg := tgbotapi.NewMessage(int64(v.IdChat), v.Event)
-						bot.Send(msg)
+				if v.Start {
+					if v.Module == models.RetrieverCoins {
+						// Отправка обратно в канал для нотификатора
+						chanModules <- v
+					} else if v.Module == models.Notificator {
+						arr, ok := v.Data.([]notifications.NotificationsCCStruct)
+						if ok {
+							for _, v := range arr {
+								msg := tgbotapi.NewMessage(int64(v.IdChat), v.Event)
+								bot.Send(msg)
+							}
+						}
 					}
 				}
-				if val.Error != nil {
-					services.Logging.Error(val.Error.Error())
+				if v.Error != nil {
+					services.Logging.WithFields(logrus.Fields{
+						"module": v.Module,
+					}).Error(v.Error.Error())
 				}
 			}
 		}

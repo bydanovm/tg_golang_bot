@@ -6,23 +6,23 @@ import (
 	"time"
 
 	"github.com/mbydanov/tg_golang_bot/internal/database"
+	"github.com/mbydanov/tg_golang_bot/internal/models"
 	"github.com/mitchellh/mapstructure"
 )
 
-func GetConfig(cfgChan chan ConfigStruct) ConfigStruct {
+func GetConfig(mainConfigIn chan models.StatusChannel) models.StatusChannel {
 	var cfg ConfigStruct
+	var stCh models.StatusChannel
 
-	fields := database.SettingsProject{}
-	expLst := []database.Expressions{}
+	expLst := []database.Expressions{
+		{Key: database.Name, Operator: database.NotEQ, Value: `'` + database.Empty + `'`},
+	}
 
-	expLst = append(expLst, database.Expressions{
-		Key: database.Name, Operator: database.NotEQ, Value: `'` + database.Empty + `'`,
-	})
 	for {
-		rs, find, _, err := database.ReadDataRow(&fields, expLst, 1)
+		rs, find, _, err := database.ReadDataRow(&database.SettingsProject{}, expLst, 1)
 		if err != nil {
-			cfg.MsgError = fmt.Errorf("GetConfig:" + err.Error())
-			cfgChan <- cfg
+			stCh.Error = fmt.Errorf("GetConfig:" + err.Error())
+			mainConfigIn <- stCh
 		}
 
 		if find {
@@ -33,11 +33,11 @@ func GetConfig(cfgChan chan ConfigStruct) ConfigStruct {
 				if subFields.Name == TMR_RESP_RTV && subFields.Active {
 					cfg.TmrRespRvt, err = strconv.Atoi(subFields.Value)
 					if err != nil {
-						cfg.MsgError = fmt.Errorf("GetConfig:Atoi:" + err.Error())
+						// cfg.MsgError = fmt.Errorf("GetConfig:Atoi:" + err.Error())
 					}
 				}
 			}
-			cfgChan <- cfg
+			// cfgChan <- cfg
 		}
 		time.Sleep(60 * time.Second)
 	}

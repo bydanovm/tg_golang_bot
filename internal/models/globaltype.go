@@ -7,15 +7,23 @@ import (
 	"time"
 )
 
+const (
+	RetrieverCoins string = `RetrieverCoins`
+	Notificator    string = `Notificator`
+	CoinMarketCap  string = `CoinMarketCap`
+)
+
 type StatusRetriever struct {
 	MsgError error
 }
 
 type StatusChannel struct {
-	Start bool
-	Stop  bool
-	Error error
-	Data  interface{}
+	Module string
+	Start  bool
+	Stop   bool
+	Update bool
+	Error  error
+	Data   interface{}
 }
 
 type fieldInfo struct {

@@ -6,5 +6,4 @@ const (
 
 type ConfigStruct struct {
 	TmrRespRvt int
-	MsgError   error
 }

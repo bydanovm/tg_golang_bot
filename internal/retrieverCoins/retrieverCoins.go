@@ -22,20 +22,22 @@ type quotesLatestAnswerExt struct {
 }
 
 func RunRetrieverCoins(
-	timeout int,
-	errorMsg chan models.StatusRetriever,
-	retrieverNotifOut chan models.StatusChannel) error {
-	var chanSrv models.StatusRetriever
-	var chanRetrieverNotifOut models.StatusChannel
+	chanModules chan models.StatusChannel) error {
+	timeout := 600
+	var modeluInfo models.StatusChannel
 	for {
 		if res, err := retrieverCoins(); err != nil {
-			chanSrv.MsgError = err
-			errorMsg <- chanSrv
+			modeluInfo.Error = err
+			modeluInfo.Update = true
 		} else {
 			// Передача данных в нотификатор
-			chanRetrieverNotifOut.Start = true
-			chanRetrieverNotifOut.Data = res
-			retrieverNotifOut <- chanRetrieverNotifOut
+			modeluInfo.Start = true
+			modeluInfo.Data = res
+			modeluInfo.Update = true
+		}
+		if modeluInfo.Update {
+			modeluInfo.Module = models.RetrieverCoins
+			chanModules <- modeluInfo
 		}
 		time.Sleep(time.Duration(timeout) * time.Second)
 	}
