@@ -18,9 +18,12 @@ func GetLatest(cryptocurrencies string) (answer []string) {
 	s := make([]string, 0)
 	var needFind []string
 	// Обрабатываем входную строку, преобразовываем в массив
-	cryptoCur := strings.Split(cryptocurrencies, ",")
+	// cryptoCur := strings.Split(cryptocurrencies, ", ")
+	cryptoCur := strings.FieldsFunc(cryptocurrencies, func(r rune) bool {
+		return r == ',' || r == ' '
+	})
 	for i := 0; i < len(cryptoCur); i++ {
-		cryptoCur[i] = strings.ToUpper(strings.Trim(cryptoCur[i], ` !&.,@#$%^*()-=+/\?<>{}АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя`))
+		cryptoCur[i] = strings.ToUpper(strings.Trim(cryptoCur[i], ` !&.,@#$%^*()-_=+/\?<>{}АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя`))
 	}
 	// Проверка на пустой массив, если пустой, то удаляем
 	cryptoCur = models.ChkArrayBySpace(cryptoCur)
@@ -62,6 +65,10 @@ func GetLatest(cryptocurrencies string) (answer []string) {
 			if err := database.UpdateData("dictcrypto", dictCryptos, expLst); err != nil {
 				s = append(s, "Возвращена ошибка при обновлении в БД: "+err.Error())
 				return s
+			} else {
+				d := database.DCCache[subFields.CryptoId]
+				d.CryptoCounter = subFields.CryptoCounter + 1
+				database.DCCache[subFields.CryptoId] = d
 			}
 		}
 		// Если нашли все валюты, то возвращаем их
@@ -140,6 +147,14 @@ func GetLatest(cryptocurrencies string) (answer []string) {
 		}
 		if err := database.WriteData("dictcrypto", dictCryptos); err != nil {
 			s = append(s, fmt.Sprintf("GetLatest:"+err.Error()))
+		} else {
+			d := database.DictCrypto{
+				CryptoId:        qla.QuotesLatestAnswerResults[i].Id,
+				CryptoName:      qla.QuotesLatestAnswerResults[i].Symbol,
+				CryptoLastPrice: qla.QuotesLatestAnswerResults[i].Price,
+				CryptoCounter:   1,
+			}
+			database.DCCache[d.CryptoId] = d
 		}
 		if err := database.WriteData("cryptoprices", cryptoprices); err != nil {
 			s = append(s, "Возвращена ошибка:\n"+err.Error())

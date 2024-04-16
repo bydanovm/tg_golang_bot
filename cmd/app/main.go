@@ -34,6 +34,10 @@ func main() {
 	// Получение настроек
 	// go config.GetConfig(chConfig)
 	// Кешировние
+	// Кешируем словарь криптовалют
+	if err := database.DCCache.CheckAllCache(); err != nil {
+		services.Logging.Panic(fmt.Errorf("main:" + err.Error()))
+	}
 	// Кешируем типы отслеживания
 	if err := database.TypeTCCache.CheckAllCache(); err != nil {
 		services.Logging.Panic(fmt.Errorf("main:" + err.Error()))

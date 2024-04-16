@@ -105,3 +105,71 @@ func (ttc *TrackingCryptoCache) GetCache(id int) (TrackingCrypto, error) {
 		return v, nil
 	}
 }
+
+// Кеш активных отслеживаний
+type DictCryptoCache map[int]DictCrypto
+
+var DCCache = make(DictCryptoCache)
+
+func (dcc *DictCryptoCache) CheckAllCache() error {
+	if _, ok := DCCache[1]; !ok {
+		// Заполняем информацию в кеш из БД
+		expLst := []Expressions{
+			{Key: "CryptoId", Operator: NotEQ, Value: "0"},
+		}
+		rs, find, _, err := ReadDataRow(&DictCrypto{}, expLst, 0)
+		if err != nil {
+			return fmt.Errorf("CheckCache:" + err.Error())
+		}
+		if !find {
+			// return fmt.Errorf("CheckCache:not find cache")
+			return nil
+		}
+		subFields := DictCrypto{}
+		for _, subRs := range rs {
+			mapstructure.Decode(subRs, &subFields)
+			DCCache[subFields.CryptoId] = subFields
+		}
+	}
+	return nil
+}
+func (dcc *DictCryptoCache) GetCache(id int) (DictCrypto, error) {
+	if v, ok := DCCache[id]; !ok {
+		return DictCrypto{}, fmt.Errorf("GetCache:Crypto not initialised")
+	} else {
+		return v, nil
+	}
+}
+func (dcc *DictCryptoCache) GetTop10Cache() (DCout []DictCrypto, err error) {
+	if len(DCCache) > 1 {
+		cnt := 0
+		for _, v := range DCCache {
+			if cnt == 10 {
+				break
+			}
+			if v.CryptoCounter >= 1 {
+				DCout = append(DCout, v)
+				cnt++
+			}
+		}
+		if cnt < 10 {
+			for i := cnt; i < 10; i++ {
+				for _, v := range DCCache {
+					isFound := false
+					for _, v1 := range DCout {
+						if v.CryptoId == v1.CryptoId {
+							isFound = true
+						}
+					}
+					if !isFound {
+						DCout = append(DCout, v)
+						break
+					}
+				}
+			}
+		}
+		return DCout, err
+	} else {
+		return []DictCrypto{}, fmt.Errorf("GetCache:Crypto not initialised")
+	}
+}
