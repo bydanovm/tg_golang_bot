@@ -140,6 +140,15 @@ func (dcc *DictCryptoCache) GetCache(id int) (DictCrypto, error) {
 		return v, nil
 	}
 }
+func (dcc *DictCryptoCache) GetAllCache() (DCout []DictCrypto) {
+	if len(DCCache) > 1 {
+		for _, v := range DCCache {
+			DCout = append(DCout, v)
+		}
+		return DCout
+	}
+	return []DictCrypto{}
+}
 func (dcc *DictCryptoCache) GetTop10Cache() (DCout []DictCrypto, err error) {
 	if len(DCCache) > 1 {
 		cnt := 0

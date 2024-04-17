@@ -114,8 +114,58 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 		}
 		if update.Message == nil && update.InlineQuery != nil {
 			// Обработка inline-режима
-			// q := update.InlineQuery.Query
-			// filteredQ := Filter()
+			query := update.InlineQuery.Query
+			filteredCrypto := Filter(database.DCCache.GetAllCache(), func(dc database.DictCrypto) bool {
+				return strings.Index(strings.ToUpper(dc.CryptoName), strings.ToUpper(query)) >= 0
+			})
+			var articles []interface{}
+			if len(filteredCrypto) == 0 {
+				// Если ничего не найдено - выводим топ 10
+				top10cur, err := database.DCCache.GetTop10Cache()
+				if err != nil {
+					services.Logging.WithFields(logrus.Fields{
+						"userId":   database.UsersCache[update.InlineQuery.From.ID].IdUsr,
+						"userName": database.UsersCache[update.InlineQuery.From.ID].NameUsr,
+					}).Error(err)
+				}
+				for _, v := range top10cur {
+					text := fmt.Sprintf("Криптовалюта: %s\nЦена: %.9f %s",
+						v.CryptoName,
+						v.CryptoLastPrice,
+						"USD",
+					)
+					msg := tgbotapi.NewInlineQueryResultArticleMarkdown(v.CryptoName, v.CryptoName, text)
+					articles = append(articles, msg)
+				}
+			} else {
+				for k, v := range filteredCrypto {
+					text := fmt.Sprintf("Криптовалюта: %s\nЦена: %.9f %s",
+						v.CryptoName,
+						v.CryptoLastPrice,
+						"USD",
+					)
+					msg := tgbotapi.NewInlineQueryResultArticleMarkdown(v.CryptoName, v.CryptoName, text)
+					articles = append(articles, msg)
+					if k >= 10 {
+						break
+					}
+				}
+
+			}
+			inlineConfig := tgbotapi.InlineConfig{
+				InlineQueryID: update.InlineQuery.ID,
+				IsPersonal:    true,
+				CacheTime:     0,
+				Results:       articles,
+			}
+			_, err = bot.AnswerInlineQuery(inlineConfig)
+			if err != nil {
+				services.Logging.WithFields(logrus.Fields{
+					"userId":   database.UsersCache[update.InlineQuery.From.ID].IdUsr,
+					"userName": database.UsersCache[update.InlineQuery.From.ID].NameUsr,
+					"type":     "inline",
+				}).Info(err)
+			}
 		} else {
 			var command = ""
 			var param = ""
@@ -289,4 +339,13 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 			}
 		}
 	}
+}
+func Filter(dcs []database.DictCrypto, fn func(dc database.DictCrypto) bool) []database.DictCrypto {
+	var filtered []database.DictCrypto
+	for _, v := range dcs {
+		if fn(v) {
+			filtered = append(filtered, v)
+		}
+	}
+	return filtered
 }
