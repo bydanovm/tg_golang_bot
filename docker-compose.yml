@@ -24,7 +24,6 @@ services:
   bot:
     depends_on:
       - db
-    image: tggolangbot
     environment:
       CREATE_TABLE: "yes"
       DB_SWITCH: "on"
@@ -37,8 +36,12 @@ services:
       DBNAME: postgres
       SSLMODE: disable
       LANGUAGE: en
+      BOT_NAME: ${BOT_NAME}
     build:
       context: .
       dockerfile: ./Dockerfile
+      labels:
+        com.tg_golang_bot.name: "${BOT_NAME}"
+        com.tg_golang_bot.version: "0.0.8.5"
     ports:
       - 3000:3000

@@ -37,6 +37,7 @@ services:
       DBNAME: postgres
       SSLMODE: disable
       LANGUAGE: en
+      BOT_NAME: ${BOT_NAME}
     build:
       context: .
       dockerfile: ./Dockerfile.debug
