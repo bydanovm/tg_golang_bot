@@ -17,7 +17,7 @@ func RunNotification(
 			// Прием ответа от ретривера
 			if v.Module == models.RetrieverCoins && v.Start {
 				// Функция работы с уведомлениями по КВ
-				if res, err := notificationsCC(v.Data); err != nil {
+				if res, err := notificationsCC(database.DCCache); err != nil {
 					// Запись в канал об ошибке
 					v.Error = err
 				} else if res != nil {
@@ -47,39 +47,31 @@ func RunNotification(
 func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 	notifCCStruct := []NotificationsCCStruct{}
 
-	// Определим для каждого отслеживания, было ли событие
-	// Выбираем все записи из таблицы с включенным отслеживанием
-	expLst := []database.Expressions{
-		{Key: "IdTrkCrp", Operator: database.NotEQ, Value: `'0'`},
-		{Key: "OnTrkCrp", Operator: database.EQ, Value: `true`},
-	}
-	rs, find, _, err := database.ReadDataRow(&database.TrackingCrypto{}, expLst, 0)
-	if err != nil {
-		return nil, fmt.Errorf("notificationsCC:" + err.Error())
-	}
-	if !find {
-		return nil, nil
-	}
-	for _, subRs := range rs {
+	for _, subRs := range database.TCCache {
 		subFields := database.TrackingCrypto{}
 		mapstructure.Decode(subRs, &subFields)
+		// Отсеиваем не активные отслеживания
+		if !subFields.OnTrkCrp {
+			continue
+		}
 
 		dictCryptos := database.DictCrypto{}
-		v, ok := bufferForNotif.(map[int]interface{})
+		v, ok := bufferForNotif.(database.DictCryptoCache)
 		if !ok {
 			return nil, fmt.Errorf("notificationsCC:error convert interface to map[int]interface")
 		}
 		mapstructure.Decode(v[subFields.DctCrpId], &dictCryptos)
-		// Получаем лимит и увеличиваем его
-		lmt := database.Limits{}
-		if err := lmt.GetLimit("LMT003", subFields.UserId); err != nil {
-			return nil, fmt.Errorf("notificationsCC:" + err.Error())
-		}
+		// Получаем лимит в соответствии с отслеживанием и увеличиваем его
+		lmt := database.LmtCache[subFields.LmtId]
+		// lmt := database.Limits{}
+		// if err := lmtId.GetLimit("LMT003", subFields.UserId); err != nil {
+		// 	return nil, fmt.Errorf("notificationsCC:" + err.Error())
+		// }
 		avalLmt, err := lmt.IncrLimit(1)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
-		// Получаем инфу о типе отслеживания
+		// Получаем информацию о типе отслеживания
 		typeInfo, err := database.TypeTCCache.GetCache(subFields.TypTrkCrpId)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())

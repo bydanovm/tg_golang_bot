@@ -150,7 +150,7 @@ func (ttc *TrackingCryptoCache) GetCacheLastId() int {
 }
 
 // Кеш словаря критовалют
-type DictCryptoCache map[int]DictCrypto
+type DictCryptoCache map[int]interface{}
 type DictCryptoCacheKeys map[string]int // Словарь symbol - Id
 
 var DCCache = make(DictCryptoCache)
@@ -182,7 +182,7 @@ func (dcc *DictCryptoCache) CheckAllCache() error {
 }
 func (dcc *DictCryptoCache) GetCache(id int) (DictCrypto, error) {
 	d := *dcc
-	if v, ok := d[id]; !ok {
+	if v, ok := d[id].(DictCrypto); !ok {
 		return DictCrypto{}, fmt.Errorf("GetCache:Crypto not initialised")
 	} else {
 		return v, nil
@@ -192,7 +192,7 @@ func (dcc *DictCryptoCache) GetAllCache() (DCout []DictCrypto) {
 	d := *dcc
 	if len(d) > 1 {
 		for _, v := range d {
-			DCout = append(DCout, v)
+			DCout = append(DCout, v.(DictCrypto))
 		}
 		return DCout
 	}
@@ -206,8 +206,8 @@ func (dcc *DictCryptoCache) GetTop10Cache() (DCout []DictCrypto, err error) {
 			if cnt == 10 {
 				break
 			}
-			if v.CryptoCounter >= 1 {
-				DCout = append(DCout, v)
+			if v.(DictCrypto).CryptoCounter >= 1 {
+				DCout = append(DCout, v.(DictCrypto))
 				cnt++
 			}
 		}
@@ -216,12 +216,12 @@ func (dcc *DictCryptoCache) GetTop10Cache() (DCout []DictCrypto, err error) {
 				for _, v := range d {
 					isFound := false
 					for _, v1 := range DCout {
-						if v.CryptoId == v1.CryptoId {
+						if v.(DictCrypto).CryptoId == v1.CryptoId {
 							isFound = true
 						}
 					}
 					if !isFound {
-						DCout = append(DCout, v)
+						DCout = append(DCout, v.(DictCrypto))
 						break
 					}
 				}

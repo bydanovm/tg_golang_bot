@@ -323,9 +323,9 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 								// Плюс валидация значения
 								idType := 0
 								if parseParam[2] == "+" {
-									idType = database.DCCacheKeys.GetCacheIdByName("RAISE_V")
+									idType = database.TypeTCCacheKeys.GetCacheIdByName("RAISE_V")
 								} else if parseParam[2] == "-" {
-									idType = database.DCCacheKeys.GetCacheIdByName("FALL_V")
+									idType = database.TypeTCCacheKeys.GetCacheIdByName("FALL_V")
 								} else {
 									ans = "Неверный тип отслеживания.\nИсправь команду и повтори запрос."
 								}
@@ -342,9 +342,6 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 									}
 									if err := limit.SetLimit(); err != nil {
 										ans = fmt.Sprintf("tgbot:%s", err.Error())
-									} else {
-										message = append(message, ans)
-										ans = fmt.Sprintf("Лимит опроса по криптовалюте %s успешно добавлен", parseParam[0])
 									}
 								}
 								if ans == "" {
@@ -361,7 +358,6 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 									if err := tracking.SetTracking(); err != nil {
 										ans = fmt.Sprintf("tgbot:%s", err.Error())
 									} else {
-										message = append(message, ans)
 										ans = fmt.Sprintf("Отслеживание по криптовалюте %s успешно добавлено", parseParam[0])
 									}
 								}

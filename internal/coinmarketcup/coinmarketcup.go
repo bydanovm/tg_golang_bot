@@ -66,7 +66,7 @@ func GetLatest(cryptocurrencies string) (answer []string) {
 				s = append(s, "Возвращена ошибка при обновлении в БД: "+err.Error())
 				return s
 			} else {
-				d := database.DCCache[subFields.CryptoId]
+				d := database.DCCache[subFields.CryptoId].(database.DictCrypto)
 				d.CryptoCounter = subFields.CryptoCounter + 1
 				database.DCCache[subFields.CryptoId] = d
 			}
