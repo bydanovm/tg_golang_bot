@@ -46,7 +46,14 @@ func main() {
 	if err := database.TCCache.CheckAllCache(); err != nil {
 		services.Logging.Panic(fmt.Errorf("main:" + err.Error()))
 	}
-
+	// Кеширование словаря лимитов
+	if err := database.LmtCacheKeys.InitCache(); err != nil {
+		services.Logging.Panic(fmt.Errorf("main:LmtKeys:" + err.Error()))
+	}
+	// Кеширование лимитов
+	if err := database.LmtCache.InitCache(); err != nil {
+		services.Logging.Panic(fmt.Errorf("main:Lmt:" + err.Error()))
+	}
 	// Функция считывания настроек из канала
 	// go func() {
 	// 	for {

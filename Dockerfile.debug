@@ -1,6 +1,16 @@
 # FROM tggolangbot:staging
-FROM shoutertm/dockerhub:tggolangbot AS builder
+FROM tggolangbot AS builder
 WORKDIR /go/src/tg_golang_bot
 COPY . .
 RUN CGO_ENABLED=0 go build -gcflags "all=-N -l" -o /go/bin/tg_golang_bot -v ./cmd/app/main.go
 CMD [ "/go/bin/dlv", "--listen=:12345", "--headless=true", "--log=true", "--log-output=debugger,debuglineerr,gdbwire,lldbout,rpc", "--accept-multiclient", "--api-version=2", "exec", "/go/bin/tg_golang_bot" ] 
+
+# FROM golang:alpine AS builder
+# RUN apk add --no-cache git
+# WORKDIR /go/src/tg_golang_bot
+# COPY . .
+# RUN go get -d -v ./...
+# # ENV GO111MODULE=off
+# RUN CGO_ENABLED=0 go install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@latest
+# RUN CGO_ENABLED=0 go build -gcflags "all=-N -l" -o /go/bin/tg_golang_bot -v ./cmd/app/main.go
+# CMD [ "/go/bin/dlv", "--listen=:12345", "--headless=true", "--log=true", "--log-output=debugger,debuglineerr,gdbwire,lldbout,rpc", "--accept-multiclient", "--api-version=2", "exec", "/go/bin/tg_golang_bot" ] 

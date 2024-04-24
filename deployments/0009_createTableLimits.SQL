@@ -34,8 +34,8 @@ CREATE TABLE "public"."limits" (
     "activelmt" BOOLEAN DEFAULT FALSE,
     "tslmton" TIMESTAMP NULL,
     "tslmtoff" TIMESTAMP NULL,
-    "userid" INTEGER NOT NULL UNIQUE,
-    "ltmdctid" INTEGER NOT NULL UNIQUE,
+    "userid" INTEGER NOT NULL,
+    "ltmdctid" INTEGER NOT NULL,
     CONSTRAINT "limits_pkey" PRIMARY KEY ("idlmt"),
     CONSTRAINT "limits_users_fkey" FOREIGN KEY("userid")
         REFERENCES "public"."users"("idusr"),

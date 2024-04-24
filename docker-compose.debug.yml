@@ -24,7 +24,6 @@ services:
   bot:
     depends_on:
       - db
-    image: tggolangbot
     environment:
       CREATE_TABLE: "yes"
       DB_SWITCH: "on"

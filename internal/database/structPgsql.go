@@ -258,9 +258,21 @@ func (l *Limits) GetLimit(nameLmt string, usrId int) error {
 			mapstructure.Decode(subRs, &l)
 		}
 	} else {
-		return fmt.Errorf("GetLimit:Limit %s for user %v not found", lmtDct.NameLmtDct, l.UserId)
+		return fmt.Errorf("GetLimit:Limit %s for user %s id:%v not found", lmtDct.NameLmtDct, UsersCache[usrId].NameUsr, UsersCache[usrId].IdUsr)
 	}
 
+	return nil
+}
+func (l *Limits) SetLimit() error {
+	if l.IdLmt == 0 || l.LtmDctId == 0 || l.UserId == 0 ||
+		l.ValAvailLmt == 0 {
+		return fmt.Errorf("SetTracking:Some field is empty")
+	}
+	if err := WriteDataStruct(l); err != nil {
+		return err
+	}
+	//Кеширование
+	LmtCache[l.IdLmt] = *l
 	return nil
 }
 
@@ -284,7 +296,8 @@ func (l *Limits) IncrLimit(valIncr int) (int, error) {
 	if err := UpdateData("Limits", data, expLst); err != nil {
 		return 0, fmt.Errorf("IncrLimit:" + err.Error())
 	}
-
+	//Кеширование
+	LmtCache[l.IdLmt] = *l
 	return l.ValAvailLmt - l.ValUsedLmt, nil
 }
 
@@ -341,6 +354,7 @@ type TrackingCrypto struct {
 	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY"`
 	ValTrkCrp   float32 `sql_type:"NUMERIC(19,9)"`
 	OnTrkCrp    bool    `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
+	LmtId       int     `sql_type:"INTEGER REFERENCES Limits (lmtid)"`
 	TypTrkCrpId int     `sql_type:"INTEGER REFERENCES TypeTrackingCrypto (idTypTrkCrp)"`
 	DctCrpId    int     `sql_type:"INTEGER REFERENCES DictCrypto (CryptoId)"`
 	UserId      int     `sql_type:"INTEGER REFERENCES Users (idUsr)"`
@@ -387,6 +401,17 @@ func (t *TrackingCrypto) OffTracking() error {
 	if err := UpdateData("TrackingCrypto", data, expLst); err != nil {
 		return fmt.Errorf("OffTracking:" + err.Error())
 	}
+	return nil
+}
+func (t *TrackingCrypto) SetTracking() error {
+	if t.DctCrpId == 0 || t.TypTrkCrpId == 0 || t.ValTrkCrp == 0 ||
+		t.UserId == 0 {
+		return fmt.Errorf("SetTracking:Some field is empty")
+	}
+	if err := WriteDataStruct(t); err != nil {
+		return err
+	}
+	TCCache[t.IdTrkCrp] = *t
 	return nil
 }
 

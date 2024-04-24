@@ -36,10 +36,13 @@ CREATE TABLE "public"."trackingcrypto" (
     "idtrkcrp" integer DEFAULT nextval('trackingcrypto_id_seq') NOT NULL,
     "valtrkcrp" NUMERIC(19,9) DEFAULT 0,
     "ontrkcrp" BOOLEAN NOT NULL DEFAULT FALSE,
+    "lmtid" INTEGER,
     "typtrkcrpid" INTEGER, 
     "dctcrpid" INTEGER,
     "userid" INTEGER,
     CONSTRAINT "trackingcrypto_pkey" PRIMARY KEY ("idtrkcrp"),
+    CONSTRAINT "trackingcrypto_limits_fkey" FOREIGN KEY("lmtid")
+        REFERENCES "public"."limits"("idlmt"),
     CONSTRAINT "trackingcrypto_typetrackingcrypto_fkey" FOREIGN KEY("typtrkcrpid")
         REFERENCES "public"."typetrackingcrypto"("idtyptrkcrp"),
     CONSTRAINT "trackingcrypto_dictcrypto_fkey" FOREIGN KEY("dctcrpid")
@@ -48,13 +51,13 @@ CREATE TABLE "public"."trackingcrypto" (
         REFERENCES "public"."users"("idusr")
 ) WITH (oids = false);
 
-MERGE INTO public.trackingcrypto as t
-USING (VALUES (1, 68300.0, true, 1, 1, 786751823))
-    s (idtrkcrp, valtrkcrp, ontrkcrp, typtrkcrpid, dctcrpid, userid)
-    ON t.idtrkcrp = s.idtrkcrp
-WHEN MATCHED THEN 
-    UPDATE SET (idtrkcrp, valtrkcrp, ontrkcrp, typtrkcrpid, dctcrpid, userid) =
-            (s.idtrkcrp, s.valtrkcrp, s.ontrkcrp, s.typtrkcrpid, s.dctcrpid, s.userid)
-WHEN NOT MATCHED THEN
-    INSERT (idtrkcrp, valtrkcrp, ontrkcrp, typtrkcrpid, dctcrpid, userid)
-    VALUES (s.idtrkcrp, s.valtrkcrp, s.ontrkcrp, s.typtrkcrpid, s.dctcrpid, s.userid);
+-- MERGE INTO public.trackingcrypto as t
+-- USING (VALUES (1, 68300.0, true, 1, 1, 786751823))
+--     s (idtrkcrp, valtrkcrp, ontrkcrp, typtrkcrpid, dctcrpid, userid)
+--     ON t.idtrkcrp = s.idtrkcrp
+-- WHEN MATCHED THEN 
+--     UPDATE SET (idtrkcrp, valtrkcrp, ontrkcrp, typtrkcrpid, dctcrpid, userid) =
+--             (s.idtrkcrp, s.valtrkcrp, s.ontrkcrp, s.typtrkcrpid, s.dctcrpid, s.userid)
+-- WHEN NOT MATCHED THEN
+--     INSERT (idtrkcrp, valtrkcrp, ontrkcrp, typtrkcrpid, dctcrpid, userid)
+--     VALUES (s.idtrkcrp, s.valtrkcrp, s.ontrkcrp, s.typtrkcrpid, s.dctcrpid, s.userid);

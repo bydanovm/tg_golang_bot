@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -278,18 +279,123 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 										"userName": database.UsersCache[update.Message.From.ID].NameUsr,
 									}).Error(err)
 								}
-								for _, v := range top10cur {
-									var row []tgbotapi.InlineKeyboardButton
+								var row []tgbotapi.InlineKeyboardButton
+								for k, v := range top10cur {
 									btn := tgbotapi.NewInlineKeyboardButtonData(v.CryptoName, GetCrypto+"_"+v.CryptoName)
 									row = append(row, btn)
-									keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+									// Делим на N строк по 5 элементов
+									if (k+1)%5 == 0 {
+										keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+										row = nil
+									}
 								}
+								row = append(row, tgbotapi.NewInlineKeyboardButtonData("Еще", "next_"+GetCrypto))
+								keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
 								msg.ReplyMarkup = keyboard
 								bot.Send(msg)
 							}
-
 						}
+					case SetNotif:
+						if _, ok := database.UsersCache[update.Message.From.ID]; !ok {
+							ans := fmt.Sprintf("Я тебя не знаю, давай сначала познакомимся.\nВведи команду /%s", Start)
+							message = append(message, ans)
+							// Отправлем сообщение
+							msg := tgbotapi.NewMessage(update.Message.Chat.ID,
+								ans)
+							bot.Send(msg)
+						} else {
+							if param != "" {
+								parseParam := strings.Split(param, " ")
+								var ans string
+								// КВ Значение Тип
+								// Определить КВ по параметру 0
+								idCrpt := database.DCCacheKeys.GetCacheIdByName(parseParam[0])
+								if idCrpt == 0 {
+									ans = fmt.Sprintf("Криптовалюта %s не найдена.\nИсправь команду и повтори запрос.", parseParam[0])
+								}
+								// Тут должна быть проверка Значения
+								valTrck, err := strconv.Atoi(parseParam[1])
+								if err != nil {
+									ans = "Неверное значение цены отслеживания.\nИсправь команду и повтори запрос."
+								}
+								// Найти Тип отслеживания
+								// Продумать динамическую проверку имени в кеше
+								// Плюс валидация значения
+								idType := 0
+								if parseParam[2] == "+" {
+									idType = database.DCCacheKeys.GetCacheIdByName("RAISE_V")
+								} else if parseParam[2] == "-" {
+									idType = database.DCCacheKeys.GetCacheIdByName("FALL_V")
+								} else {
+									ans = "Неверный тип отслеживания.\nИсправь команду и повтори запрос."
+								}
+								idUsr := database.UsersCache[update.Message.From.ID].IdUsr
+								limit := database.Limits{}
+								if ans == "" {
+									// Установка лимита
+									limit = database.Limits{
+										IdLmt:       database.LmtCache.GetCacheLastId(),
+										ValAvailLmt: database.LmtCacheKeys["LMT003"].StdValLmt,
+										ActiveLmt:   true,
+										UserId:      idUsr,
+										LtmDctId:    database.LmtCacheKeys["LMT003"].IdLmtDct,
+									}
+									if err := limit.SetLimit(); err != nil {
+										ans = fmt.Sprintf("tgbot:%s", err.Error())
+									} else {
+										message = append(message, ans)
+										ans = fmt.Sprintf("Лимит опроса по криптовалюте %s успешно добавлен", parseParam[0])
+									}
+								}
+								if ans == "" {
+									// Установка отслеживания
+									tracking := database.TrackingCrypto{
+										IdTrkCrp:    database.TCCache.GetCacheLastId(),
+										DctCrpId:    idCrpt,
+										TypTrkCrpId: idType,
+										LmtId:       limit.IdLmt,
+										UserId:      idUsr,
+										ValTrkCrp:   float32(valTrck),
+										OnTrkCrp:    true,
+									}
+									if err := tracking.SetTracking(); err != nil {
+										ans = fmt.Sprintf("tgbot:%s", err.Error())
+									} else {
+										message = append(message, ans)
+										ans = fmt.Sprintf("Отслеживание по криптовалюте %s успешно добавлено", parseParam[0])
+									}
+								}
+								// Логируем ответ бота
+								services.Logging.WithFields(logrus.Fields{
+									"userId":   database.UsersCache[update.Message.From.ID].IdUsr,
+									"userName": database.UsersCache[update.Message.From.ID].NameUsr,
+								}).Info(ans)
+								// Отправлем сообщение
 
+								msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, ans)
+								bot.Send(msg)
+							} else {
+								// msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, "Выберите криптовалюту для создания уведомления")
+
+								// keyboard := tgbotapi.InlineKeyboardMarkup{}
+								// top10cur, err := database.DCCache.GetTop10Cache()
+								// if err != nil {
+								// 	services.Logging.WithFields(logrus.Fields{
+								// 		"userId":   database.UsersCache[update.Message.From.ID].IdUsr,
+								// 		"userName": database.UsersCache[update.Message.From.ID].NameUsr,
+								// 	}).Error(err)
+								// }
+								// for _, v := range top10cur {
+								// 	var row []tgbotapi.InlineKeyboardButton
+								// 	btn := tgbotapi.NewInlineKeyboardButtonData(v.CryptoName, GetCrypto+"_"+v.CryptoName)
+								// 	row = append(row, btn)
+								// 	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+								// }
+								// msg.ReplyMarkup = keyboard
+								// bot.Send(msg)
+
+							}
+						}
 					default:
 						if _, ok := database.UsersCache[update.Message.From.ID]; !ok {
 							ans := fmt.Sprintf("Я тебя не знаю, давай сначала познакомимся.\nВведи команду /%s", Start)

@@ -8,4 +8,10 @@ SELECT setval('settingsproject_id_seq',
 (select max(id) from settingsproject), true);
 
 SELECT setval('users_id_seq', 
-(select max(id) from users), true);
+(select max(idusr) from users), true);
+
+SELECT setval('limits_id_seq', 
+(select max(idlmt) from limits), true);
+
+SELECT setval('trackingcrypto_id_seq', 
+(select max(idtrkcrp) from trackingcrypto), true);
