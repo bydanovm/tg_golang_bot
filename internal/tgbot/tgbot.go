@@ -503,6 +503,16 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 						}).Error("tgbot:", ans)
 					} else {
 						// Проверка команд
+						callback := tgbotapi.NewCallback(update.CallbackQuery.ID, "")
+						callback.ShowAlert = true
+						if _, err := bot.AnswerCallbackQuery(callback); err != nil {
+							services.Logging.WithFields(logrus.Fields{
+								"userId":   update.CallbackQuery.Message.Chat.ID,
+								"userName": update.CallbackQuery.Message.From.UserName,
+								"type":     "callback_answer",
+								"command":  update.CallbackQuery.Data,
+							}).Error()
+						}
 						// Разберем data callback по структуре command_cryptocur
 						callBackData := strings.Split(update.CallbackQuery.Data, "_")
 						if callBackData[0] == GetCrypto {
@@ -521,6 +531,10 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 								msg := tgbotapi.NewMessage(database.UsersCache[int(update.CallbackQuery.Message.Chat.ID)].ChatIdUsr, val)
 								bot.Send(msg)
 							}
+						} else if callBackData[0] == `next` && callBackData[1] == GetCrypto {
+							msg := tgbotapi.NewMessage(database.UsersCache[int(update.CallbackQuery.Message.Chat.ID)].ChatIdUsr,
+								"Введите свои криптовалюты")
+							bot.Send(msg)
 						}
 					}
 				}

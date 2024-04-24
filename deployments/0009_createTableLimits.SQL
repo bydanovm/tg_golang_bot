@@ -43,13 +43,13 @@ CREATE TABLE "public"."limits" (
         REFERENCES "public"."limitsdict"("idlmtdct")
 ) WITH (oids = false);
 
-MERGE INTO public.limits as t
-USING (VALUES (1, 3, 0, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 786751823, 3))
-    s (idlmt, valavaillmt, valusedlmt, activelmt, tslmton, tslmtoff, userid, ltmdctid)
-    ON t.idlmt = s.idlmt
-WHEN MATCHED THEN 
-    UPDATE SET (idlmt, valavaillmt, valusedlmt, activelmt, tslmton, tslmtoff, userid, ltmdctid) =
-            (s.idlmt, s.valavaillmt, s.valusedlmt, s.activelmt, s.tslmton, s.tslmtoff, s.userid, s.ltmdctid)
-WHEN NOT MATCHED THEN
-    INSERT (idlmt, valavaillmt, valusedlmt, activelmt, tslmton, tslmtoff, userid, ltmdctid)
-    VALUES (s.idlmt, s.valavaillmt, s.valusedlmt, s.activelmt, s.tslmton, s.tslmtoff, s.userid, s.ltmdctid);
+-- MERGE INTO public.limits as t
+-- USING (VALUES (1, 3, 0, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 786751823, 3))
+--     s (idlmt, valavaillmt, valusedlmt, activelmt, tslmton, tslmtoff, userid, ltmdctid)
+--     ON t.idlmt = s.idlmt
+-- WHEN MATCHED THEN 
+--     UPDATE SET (idlmt, valavaillmt, valusedlmt, activelmt, tslmton, tslmtoff, userid, ltmdctid) =
+--             (s.idlmt, s.valavaillmt, s.valusedlmt, s.activelmt, s.tslmton, s.tslmtoff, s.userid, s.ltmdctid)
+-- WHEN NOT MATCHED THEN
+--     INSERT (idlmt, valavaillmt, valusedlmt, activelmt, tslmton, tslmtoff, userid, ltmdctid)
+--     VALUES (s.idlmt, s.valavaillmt, s.valusedlmt, s.activelmt, s.tslmton, s.tslmtoff, s.userid, s.ltmdctid);

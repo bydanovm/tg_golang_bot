@@ -401,6 +401,7 @@ func (t *TrackingCrypto) OffTracking() error {
 	if err := UpdateData("TrackingCrypto", data, expLst); err != nil {
 		return fmt.Errorf("OffTracking:" + err.Error())
 	}
+	TCCache[t.IdTrkCrp] = *t
 	return nil
 }
 func (t *TrackingCrypto) SetTracking() error {
