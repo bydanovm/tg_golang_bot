@@ -2,6 +2,7 @@ version: '3.5'
 
 volumes:
   pgdata:
+  logs:
 
 services:
   
@@ -40,5 +41,7 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile.debug
+    volumes:
+      - logs:/logs/
     ports:
       - 12345:12345

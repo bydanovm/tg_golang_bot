@@ -61,35 +61,43 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 			return nil, fmt.Errorf("notificationsCC:error convert interface to map[int]interface")
 		}
 		mapstructure.Decode(v[subFields.DctCrpId], &dictCryptos)
-		// Получаем лимит в соответствии с отслеживанием и увеличиваем его
-		lmt := database.LmtCache[subFields.LmtId]
-		// lmt := database.Limits{}
-		// if err := lmtId.GetLimit("LMT003", subFields.UserId); err != nil {
-		// 	return nil, fmt.Errorf("notificationsCC:" + err.Error())
-		// }
-		avalLmt, err := lmt.IncrLimit(1)
-		if err != nil {
-			return nil, fmt.Errorf("notificationsCC:" + err.Error())
-		}
+
 		// Получаем информацию о типе отслеживания
 		typeInfo, err := database.TypeTCCache.GetCache(subFields.TypTrkCrpId)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
-		// _, ok = typeInfo.(database.TypeTrackingCrypto)
-		// if !ok {
-		// 	return nil, fmt.Errorf("notificationsCC:error convert interface to struct")
-		// }
+
+		// Узнаем разность
+		diff := dictCryptos.CryptoLastPrice - subFields.ValTrkCrp
+		if diff >= 0 && typeInfo.RisingTypTrkCrp { // Поднялась на N под пунктов (пп)
+			// Какая-то проверка
+		} else if diff < 0 && !typeInfo.RisingTypTrkCrp { // Опустилась на N под пунктов (пп)
+			// Какая-то проверка
+			diff *= -1
+		} else {
+			continue
+		}
+
+		// Получаем лимит в соответствии с отслеживанием и увеличиваем его
+		lmt := database.LmtCache[subFields.LmtId]
+		avalLmt, err := lmt.IncrLimit(1)
+		if err != nil {
+			return nil, fmt.Errorf("notificationsCC:" + err.Error())
+		}
+
 		// Если лимит будет исчерпан, отключаем отслеживание
 		if avalLmt == 0 {
 			if err := subFields.OffTracking(); err != nil {
 				return nil, fmt.Errorf("notificationsCC:" + err.Error())
 			}
 		}
+
 		// Кешируем пользователя
 		if err := database.UsersCache.CheckCache(subFields.UserId); err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
+
 		// Получаем имя юзера
 		user, err := database.UsersCache.GetCache(subFields.UserId)
 		if err != nil {
@@ -99,21 +107,11 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
+
 		// Получаем номер чата с пользователем
 		chatIdUsr, err := user.GetChatId()
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
-		}
-		// Узнаем разность
-		diff := dictCryptos.CryptoLastPrice - subFields.ValTrkCrp
-
-		if diff >= 0 && typeInfo.RisingTypTrkCrp { // Поднялась на N под пунктов (пп)
-			// Какая-то проверка
-		} else if diff < 0 && !typeInfo.RisingTypTrkCrp { // Опустилась на N под пунктов (пп)
-			// Какая-то проверка
-			diff *= -1
-		} else {
-			continue
 		}
 
 		notifCCStruct = append(notifCCStruct, NotificationsCCStruct{
