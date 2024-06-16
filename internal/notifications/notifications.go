@@ -99,17 +99,13 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 		}
 
 		// Получаем имя юзера
-		user, err := database.UsersCache.GetCache(subFields.UserId)
-		if err != nil {
-			return nil, fmt.Errorf("notificationsCC:" + err.Error())
-		}
-		userName, err := user.GetUserName()
+		userName := database.UsersCache.GetUserName(subFields.UserId)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
 
 		// Получаем номер чата с пользователем
-		chatIdUsr, err := user.GetChatId()
+		chatIdUsr := database.UsersCache.GetChatId(subFields.UserId)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}

@@ -3,40 +3,110 @@ package database
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/mitchellh/mapstructure"
 )
 
-// type CacheTemplate interface {
-// 	CheckCache(int) error
-// 	GetCache(int) error
-// }
+//	type CacheTemplate interface {
+//		CheckCache(int) error
+//		GetCache(int) error
+//	}
+
+type RWMutexUsr struct {
+	sync.RWMutex
+}
+
+type UserCache struct {
+	RWMutexUsr
+	Item UsersCacheType
+}
 
 // Кеширование пользователей
 type UsersCacheType map[int]Users
 
-var UsersCache = make(UsersCacheType)
+var UsersCache = Init()
 
-func (uc *UsersCacheType) CheckCache(idUsr int) error {
-	u := *uc
-	if _, ok := u[idUsr]; !ok {
-		// Заполняем информацию в кеш из БД
-		user := Users{IdUsr: idUsr}
-		if err := user.CheckUser(); err != nil {
-			return fmt.Errorf("CheckCache:" + err.Error())
-		}
-		u[idUsr] = user
+func Init() *UserCache {
+	items := make(UsersCacheType)
+
+	cache := UserCache{
+		Item: items,
 	}
-	return nil
+
+	return &cache
 }
 
-func (uc *UsersCacheType) GetCache(idUsr int) (Users, error) {
-	u := *uc
-	if v, ok := u[idUsr]; !ok {
+func (uc *UserCache) CheckCache(idUsr int) (err error) {
+	uc.RLock()
+	if _, ok := uc.Item[idUsr]; !ok {
+		uc.RUnlock()
+		// Заполняем информацию в кеш из БД
+		user := Users{IdUsr: idUsr}
+		if err = user.CheckUser(); err != nil {
+			err = fmt.Errorf("CheckCache:" + err.Error())
+		} else {
+			uc.Lock()
+			uc.Item[idUsr] = user
+			uc.Unlock()
+		}
+	}
+	isLock := uc.TryRLock()
+	if isLock {
+		uc.RUnlock()
+	}
+	return err
+}
+
+func (uc *UserCache) GetCache(idUsr int) (Users, error) {
+	uc.RLock()
+	defer uc.RUnlock()
+	if v, ok := uc.Item[idUsr]; !ok {
 		return Users{}, fmt.Errorf("GetCache:User not initialised")
 	} else {
 		return v, nil
 	}
+}
+
+func (uc *UserCache) GetCount() (cnt int) {
+	uc.RLock()
+	defer uc.RUnlock()
+	cnt = len(uc.Item)
+	return cnt
+}
+
+func (uc *UserCache) GetUserId(idUsr int) (id int) {
+	if user, err := uc.GetCache(idUsr); err != nil {
+		id = 0
+	} else {
+		id = user.IdUsr
+	}
+	return id
+}
+
+func (uc *UserCache) GetUserName(idUsr int) (name string) {
+	if user, err := uc.GetCache(idUsr); err != nil {
+		name = "Not found"
+	} else {
+		name = user.NameUsr
+	}
+	return name
+}
+
+func (uc *UserCache) GetChatId(idUsr int) (chatId int64) {
+	if user, err := uc.GetCache(idUsr); err != nil {
+		chatId = int64(user.IdUsr)
+	} else {
+		chatId = user.ChatIdUsr
+	}
+	return chatId
+}
+
+func (uc *UserCache) GetFLName(idUsr int) (FLName string) {
+	if user, err := uc.GetCache(idUsr); err != nil {
+		FLName = user.FirstName + " " + user.LastName
+	}
+	return FLName
 }
 
 // Кеш типов отслеживаний

@@ -154,45 +154,49 @@ func (u *Users) Find() (int, error) {
 
 	return -1, nil
 }
-func (u *Users) GetUserName() (string, error) {
-	// Проверка на кеш
-	if u.IdUsr != 0 {
-		return u.NameUsr, nil
-	}
-	// Если не закешировано, то новый поиск
-	if err := u.CheckUser(); err != nil {
-		return "", fmt.Errorf("GetUserName:" + err.Error())
-	}
-	return u.NameUsr, nil
-}
 
-func (u *Users) GetChatId() (int64, error) {
-	// Проверка на кеш
-	if u.IdUsr != 0 {
-		return u.ChatIdUsr, nil
-	}
-	// Если не закешировано, то новый поиск
-	if err := u.CheckUser(); err != nil {
-		return 0, fmt.Errorf("GetChatId:" + err.Error())
-	}
-	return u.ChatIdUsr, nil
-}
+// func (u *Users) GetUserName() (string, error) {
+// 	// Проверка на кеш
+// 	if u.IdUsr != 0 {
+// 		return u.NameUsr, nil
+// 	}
+// 	// Если не закешировано, то новый поиск
+// 	if err := u.CheckUser(); err != nil {
+// 		return "", fmt.Errorf("GetUserName:" + err.Error())
+// 	}
+// 	return u.NameUsr, nil
+// }
 
-// Получение First+Last name
-func (u *Users) GetFLName() (string, error) {
-	// Проверка на кеш
-	if u.IdUsr != 0 {
-		return u.FirstName + " " + u.LastName, nil
-	}
-	// Если не закешировано, то новый поиск
-	if err := u.CheckUser(); err != nil {
-		return "", fmt.Errorf("GetFLName:" + err.Error())
-	}
-	return u.FirstName + " " + u.LastName, nil
-}
+// func (u *Users) GetChatId() (int64, error) {
+// 	// Проверка на кеш
+// 	if u.IdUsr != 0 {
+// 		return u.ChatIdUsr, nil
+// 	}
+// 	// Если не закешировано, то новый поиск
+// 	if err := u.CheckUser(); err != nil {
+// 		return 0, fmt.Errorf("GetChatId:" + err.Error())
+// 	}
+// 	return u.ChatIdUsr, nil
+// }
+
+// // Получение First+Last name
+// func (u *Users) GetFLName() (string, error) {
+// 	// Проверка на кеш
+// 	if u.IdUsr != 0 {
+// 		return u.FirstName + " " + u.LastName, nil
+// 	}
+// 	// Если не закешировано, то новый поиск
+// 	if err := u.CheckUser(); err != nil {
+// 		return "", fmt.Errorf("GetFLName:" + err.Error())
+// 	}
+// 	return u.FirstName + " " + u.LastName, nil
+// }
 
 // Добавление пользователя в базу
 func (u *Users) Add() (int, error) {
+	if u.NameUsr == "" {
+		u.NameUsr = "Анонимный пользователь"
+	}
 	if u.IdUsr == 0 || u.NameUsr == "" || u.FirstName == "" ||
 		u.LangCode == "" || int(u.ChatIdUsr) == 0 || u.IdLvlSec == 0 {
 		return -1, fmt.Errorf("CheckUser:Some field is empty")
@@ -258,7 +262,7 @@ func (l *Limits) GetLimit(nameLmt string, usrId int) error {
 			mapstructure.Decode(subRs, &l)
 		}
 	} else {
-		return fmt.Errorf("GetLimit:Limit %s for user %s id:%v not found", lmtDct.NameLmtDct, UsersCache[usrId].NameUsr, UsersCache[usrId].IdUsr)
+		return fmt.Errorf("GetLimit:Limit %s for user %s id:%v not found", lmtDct.NameLmtDct, UsersCache.GetUserName(usrId), usrId)
 	}
 
 	return nil

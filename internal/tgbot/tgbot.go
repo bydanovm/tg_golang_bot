@@ -154,8 +154,8 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 			_, err = bot.AnswerInlineQuery(inlineConfig)
 			if err != nil {
 				services.Logging.WithFields(logrus.Fields{
-					"userId":   database.UsersCache[update.InlineQuery.From.ID].IdUsr,
-					"userName": database.UsersCache[update.InlineQuery.From.ID].NameUsr,
+					"userId":   database.UsersCache.GetUserId(update.InlineQuery.From.ID),
+					"userName": database.UsersCache.GetUserName(update.InlineQuery.From.ID),
 					"type":     "inline",
 				}).Info(err)
 			}
@@ -177,8 +177,8 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 				param = update.Message.CommandArguments()
 				if command != "" {
 					services.Logging.WithFields(logrus.Fields{
-						"userId":   database.UsersCache[update.Message.From.ID].IdUsr,
-						"userName": database.UsersCache[update.Message.From.ID].NameUsr,
+						"userId":   database.UsersCache.GetUserId(update.Message.From.ID),
+						"userName": database.UsersCache.GetUserName(update.Message.From.ID),
 						"type":     "command",
 						"args":     param,
 					}).Info(command)
@@ -190,7 +190,7 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 					switch command {
 					case Start:
 						// Проверяем есть ли пользователь в кеше или базе
-						if _, ok := database.UsersCache[update.Message.From.ID]; !ok {
+						if userId := database.UsersCache.GetUserId(update.Message.From.ID); userId == 0 {
 							// Пользователь не в кеше, ищем в БД, если не находим, то добавляем нового
 							// Единственная точка входа, где пользователь может добавиться в БД
 							user := database.Users{
@@ -208,8 +208,12 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 							if err := user.CheckUser(); err != nil {
 								// Отправляем сообщение в лог об ошибке
 								services.Logging.Warn(err.Error())
+							} else {
+								// Кешируем добавленного пользователя
+								if err := database.UsersCache.CheckCache(update.Message.From.ID); err != nil {
+									services.Logging.Warn(err.Error())
+								}
 							}
-							database.UsersCache[update.Message.From.ID] = user
 						}
 						// Отправлем приветственное сообщение
 						ans := "Привет! Давай я немного расскажу о себе.\n" +
@@ -224,11 +228,11 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 							"но пока я еще маленький и еще многому учусь.\n"
 						message = append(message,
 							ans)
-						msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr,
+						msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID),
 							ans)
 						bot.Send(msg)
 					case NumberOfUsers:
-						if _, ok := database.UsersCache[update.Message.From.ID]; !ok {
+						if ok := database.UsersCache.GetUserId(update.Message.From.ID); ok == 0 {
 							ans := fmt.Sprintf("Я тебя не знаю, давай сначала познакомимся.\nВведи команду /%s", Start)
 							message = append(message, ans)
 							// Отправлем сообщение
@@ -238,15 +242,15 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 						} else {
 							// Создаем строку которая содержит колличество пользователей использовавших бота
 							// Берем из кеша
-							ans := fmt.Sprintf("%d пользователь использует бота", len(database.UsersCache))
+							ans := fmt.Sprintf("%d пользователь использует бота", database.UsersCache.GetCount())
 							message = append(message, ans)
 							// Отправлем сообщение
-							msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr,
+							msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID),
 								ans)
 							bot.Send(msg)
 						}
 					case GetCrypto:
-						if _, ok := database.UsersCache[update.Message.From.ID]; !ok {
+						if ok := database.UsersCache.GetUserId(update.Message.From.ID); ok == 0 {
 							ans := fmt.Sprintf("Я тебя не знаю, давай сначала познакомимся.\nВведи команду /%s", Start)
 							message = append(message, ans)
 							// Отправлем сообщение
@@ -254,29 +258,28 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 								ans)
 							bot.Send(msg)
 						} else {
-
 							if param != "" {
 								message = coinmarketcup.GetLatest(param)
 								// Проходим через срез и отправляем каждый элемент пользователю
 								for _, val := range message {
 									// Логируем ответ бота
 									services.Logging.WithFields(logrus.Fields{
-										"userId":   database.UsersCache[update.Message.From.ID].IdUsr,
-										"userName": database.UsersCache[update.Message.From.ID].NameUsr,
+										"userId":   database.UsersCache.GetUserId(update.Message.From.ID),
+										"userName": database.UsersCache.GetUserName(update.Message.From.ID),
 									}).Info(val)
 									// Отправлем сообщение
-									msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, val)
+									msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID), val)
 									bot.Send(msg)
 								}
 							} else {
-								msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, "Выберите криптовалюту")
+								msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID), "Выберите криптовалюту")
 
 								keyboard := tgbotapi.InlineKeyboardMarkup{}
 								top10cur, err := database.DCCache.GetTop10Cache()
 								if err != nil {
 									services.Logging.WithFields(logrus.Fields{
-										"userId":   database.UsersCache[update.Message.From.ID].IdUsr,
-										"userName": database.UsersCache[update.Message.From.ID].NameUsr,
+										"userId":   database.UsersCache.GetUserId(update.Message.From.ID),
+										"userName": database.UsersCache.GetUserName(update.Message.From.ID),
 									}).Error(err)
 								}
 								var row []tgbotapi.InlineKeyboardButton
@@ -296,7 +299,7 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 							}
 						}
 					case SetNotif:
-						if _, ok := database.UsersCache[update.Message.From.ID]; !ok {
+						if ok := database.UsersCache.GetUserId(update.Message.From.ID); ok == 0 {
 							ans := fmt.Sprintf("Я тебя не знаю, давай сначала познакомимся.\nВведи команду /%s", Start)
 							message = append(message, ans)
 							// Отправлем сообщение
@@ -329,7 +332,7 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 								} else {
 									ans = "Неверный тип отслеживания.\nИсправь команду и повтори запрос."
 								}
-								idUsr := database.UsersCache[update.Message.From.ID].IdUsr
+								idUsr := database.UsersCache.GetUserId(update.Message.From.ID)
 								limit := database.Limits{}
 								if ans == "" {
 									// Установка лимита
@@ -363,12 +366,12 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 								}
 								// Логируем ответ бота
 								services.Logging.WithFields(logrus.Fields{
-									"userId":   database.UsersCache[update.Message.From.ID].IdUsr,
-									"userName": database.UsersCache[update.Message.From.ID].NameUsr,
+									"userId":   database.UsersCache.GetUserId(update.Message.From.ID),
+									"userName": database.UsersCache.GetUserName(update.Message.From.ID),
 								}).Info(ans)
 								// Отправлем сообщение
 
-								msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, ans)
+								msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID), ans)
 								bot.Send(msg)
 							} else {
 								// msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr, "Выберите криптовалюту для создания уведомления")
@@ -393,7 +396,7 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 							}
 						}
 					default:
-						if _, ok := database.UsersCache[update.Message.From.ID]; !ok {
+						if ok := database.UsersCache.GetUserId(update.Message.From.ID); ok == 0 {
 							ans := fmt.Sprintf("Я тебя не знаю, давай сначала познакомимся.\nВведи команду /%s", Start)
 							message = append(message, ans)
 							// Отправлем сообщение
@@ -406,7 +409,7 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 							message = append(message, ans)
 
 							// Отправлем сообщение
-							msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr,
+							msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID),
 								ans)
 							bot.Send(msg)
 						}
@@ -414,13 +417,13 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 					}
 					// Логируем ответ бота на команды
 					services.Logging.WithFields(logrus.Fields{
-						"userId":   database.UsersCache[update.Message.From.ID].IdUsr,
-						"userName": database.UsersCache[update.Message.From.ID].NameUsr,
+						"userId":   database.UsersCache.GetUserId(update.Message.From.ID),
+						"userName": database.UsersCache.GetUserName(update.Message.From.ID),
 						"type":     "answer",
 					}).Info(message)
 				} else {
 					if reflect.TypeOf(update.Message.Text).Kind() == reflect.String && update.Message.Text != "" {
-						if _, ok := database.UsersCache[update.Message.From.ID]; !ok {
+						if ok := database.UsersCache.GetUserId(update.Message.From.ID); ok == 0 {
 							ans := fmt.Sprintf("Я тебя не знаю, давай сначала познакомимся.\nВведи команду /%s", Start)
 							message = append(message, ans)
 							msg := tgbotapi.NewMessage(update.Message.Chat.ID,
@@ -430,7 +433,7 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 							ans := update.Message.Text + " что такое, я такого не знаю.\n" +
 								"Воспользуйся командой /" + Start + " для знакомства со мной."
 							message = append(message, ans)
-							msg := tgbotapi.NewMessage(database.UsersCache[update.Message.From.ID].ChatIdUsr,
+							msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID),
 								ans)
 							bot.Send(msg)
 						}
@@ -481,18 +484,18 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 					// }
 				}
 				// Собираем статистику в базу
-				if err := database.CollectData(database.UsersCache[update.Message.From.ID].NameUsr,
-					database.UsersCache[update.Message.From.ID].ChatIdUsr, update.Message.Text, message); err != nil {
+				if err := database.CollectData(database.UsersCache.GetUserName(update.Message.From.ID),
+					database.UsersCache.GetChatId(update.Message.From.ID), update.Message.Text, message); err != nil {
 					services.Logging.WithFields(logrus.Fields{
-						"userId":   database.UsersCache[update.Message.From.ID].IdUsr,
-						"userName": database.UsersCache[update.Message.From.ID].NameUsr,
+						"userId":   database.UsersCache.GetUserId(update.Message.From.ID),
+						"userName": database.UsersCache.GetUserName(update.Message.From.ID),
 					}).Error("tgbot:", err.Error())
 				}
 			} else {
 				// Обработка callback
 				if update.CallbackQuery != nil {
 					// Проверка, что пользователь есть в базе (кеше)
-					if _, ok := database.UsersCache[update.CallbackQuery.From.ID]; !ok {
+					if ok := database.UsersCache.GetUserId(update.CallbackQuery.From.ID); ok == 0 {
 						ans := "Я не нашел тебя в своей базе. Пожалуйста, воспользуйте сначала командой /start для знакомства."
 						msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, ans)
 						bot.Send(msg)
@@ -521,18 +524,18 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 							for _, val := range message {
 								// Логируем ответ бота
 								services.Logging.WithFields(logrus.Fields{
-									"userId":   database.UsersCache[int(update.CallbackQuery.Message.Chat.ID)].IdUsr,
-									"userName": database.UsersCache[int(update.CallbackQuery.Message.Chat.ID)].NameUsr,
+									"userId":   database.UsersCache.GetUserId(int(update.CallbackQuery.Message.Chat.ID)),
+									"userName": database.UsersCache.GetUserName(int(update.CallbackQuery.Message.Chat.ID)),
 									"type":     "callback",
 									"command":  GetCrypto,
 									"currency": callBackData[1],
 								}).Info(val)
 								// Отправлем сообщение
-								msg := tgbotapi.NewMessage(database.UsersCache[int(update.CallbackQuery.Message.Chat.ID)].ChatIdUsr, val)
+								msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(int(update.CallbackQuery.Message.Chat.ID)), val)
 								bot.Send(msg)
 							}
 						} else if callBackData[0] == `next` && callBackData[1] == GetCrypto {
-							msg := tgbotapi.NewMessage(database.UsersCache[int(update.CallbackQuery.Message.Chat.ID)].ChatIdUsr,
+							msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(int(update.CallbackQuery.Message.Chat.ID)),
 								"Введите свои криптовалюты")
 							bot.Send(msg)
 						}
