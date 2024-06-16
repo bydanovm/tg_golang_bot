@@ -136,10 +136,12 @@ func getAndSaveFromAPI(cryptoCur []string) (interface{}, error) {
 			return nil, err
 		} else {
 			// Если не было ошибки при обновлении, то кешируем
-			d := database.DCCache[qla.QuotesLatestAnswerResults[i].Id].(database.DictCrypto)
-			d.CryptoLastPrice = qla.QuotesLatestAnswerResults[i].Price
-			// d.CryptoUpdate = dateTime
-			database.DCCache[qla.QuotesLatestAnswerResults[i].Id] = d
+			// panic: interface conversion: interface {} is nil, not database.DictCrypto
+			if d, ok := database.DCCache[qla.QuotesLatestAnswerResults[i].Id].(database.DictCrypto); ok {
+				d.CryptoLastPrice = qla.QuotesLatestAnswerResults[i].Price
+				// d.CryptoUpdate = dateTime
+				database.DCCache[qla.QuotesLatestAnswerResults[i].Id] = d
+			}
 		}
 
 		// Поиск индекса найденной валюты и её удаление из массива needFind
