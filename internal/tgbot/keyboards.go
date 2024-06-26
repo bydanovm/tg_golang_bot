@@ -7,27 +7,37 @@ import (
 
 const (
 	// Comands
-	Start         string = "start"           // Начало
-	NumberOfUsers string = "number_of_users" // Получить количество активных пользователей
-	GetCrypto     string = "getcrypto"       // Получить актуальную информацию по криптовалюте
-	SetNotif      string = "setnotif"        // Установить уведомления по изменению цены криптовалюты
-	Help          string = "help"
+	Start                 string = "start"           // Начало
+	NumberOfUsers         string = "number_of_users" // Получить количество активных пользователей
+	GetCrypto             string = "getcrypto"       // Получить актуальную информацию по криптовалюте
+	SetNotif              string = "setnotif"        // Установить уведомления по изменению цены криптовалюты
+	SetNotifCrypto        string = SetNotif + "_crypto"
+	SetNotifCriterion     string = SetNotif + "_criterion"
+	SetNotifCriterionMore string = SetNotif + "_criterionmore"
+	SetNotifCriterionLess string = SetNotif + "_criterionless"
+	SetNotifPrice         string = SetNotif + "_price"
+
+	Help string = "help"
 )
 
 type tgBotMenu struct {
 	buttons *models.TreeNode
 }
 
-// var tgBotMenu = models.InitTree()
-
 func initMenu() *tgBotMenu {
 	buttons := models.InitTree()
-	buttons.Add(GetCrypto, "Узнать курс", "0")
-	buttons.Add(GetCrypto+"_BTC", "Узнать курс BTC", GetCrypto)
-	buttons.Add(GetCrypto+"_ETH", "Узнать курс ETH", GetCrypto)
-	buttons.Add(GetCrypto+"_TON", "Узнать курс TON", GetCrypto)
-	buttons.Add(SetNotif, "Оповещения", "0")
-	buttons.Add(Help, "Справка", "0")
+	buttons.Add(GetCrypto, "Узнать курс", "0", true)
+	buttons.Add(GetCrypto+"_BTC", "Узнать курс BTC", GetCrypto, true)
+	buttons.Add(GetCrypto+"_ETH", "Узнать курс ETH", GetCrypto, true)
+	buttons.Add(GetCrypto+"_TON", "Узнать курс TON", GetCrypto, true)
+	buttons.Add(SetNotif, "Оповещения", "0", true)
+	buttons.Add(SetNotifCrypto, "Выбрать крипту", SetNotif, true)
+	buttons.Add(SetNotifCriterion, "Установить критерий", SetNotif, false)
+	buttons.Add(SetNotifPrice, "Установить цену", SetNotif, false)
+	buttons.Add(SetNotifCriterionMore, "Больше >=", SetNotifCriterion, true)
+	buttons.Add(SetNotifCriterionLess, "Меньше <=", SetNotifCriterion, true)
+	buttons.Add(Start, "Назад", SetNotif, true)
+	buttons.Add(Help, "Справка", "0", true)
 
 	menu := &tgBotMenu{
 		buttons: buttons,
@@ -46,7 +56,19 @@ func (tgm *tgBotMenu) GetMainMenuReplyMarkup() (buttons []tgbotapi.KeyboardButto
 func (tgm *tgBotMenu) GetMainMenuInlineMarkup() (buttons []tgbotapi.InlineKeyboardButton) {
 	nodes := tgm.buttons.GetNodeChild("0")
 	for _, v := range nodes {
-		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(v.Description, v.Name))
+		if v.Visible {
+			buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(v.Description, v.Name))
+		}
+	}
+	return buttons
+}
+
+func (tgm *tgBotMenu) GetMainMenuInlineMarkupFromNode(node string) (buttons []tgbotapi.InlineKeyboardButton) {
+	nodes := tgm.buttons.GetNodeChild(node)
+	for _, v := range nodes {
+		if v.Visible {
+			buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(v.Description, v.Name))
+		}
 	}
 	return buttons
 }

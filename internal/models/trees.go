@@ -4,6 +4,7 @@ type Node struct {
 	Name        string
 	Description string
 	Children    []*Node
+	Visible     bool
 }
 
 type TreeNode struct {
@@ -26,11 +27,12 @@ func InitTree() *TreeNode {
 	return &treeNode
 }
 
-func (tn *TreeNode) Add(name, desc, parentId string) {
+func (tn *TreeNode) Add(name, desc, parentId string, visible bool) {
 	node := &Node{
 		Name:        name,
 		Description: desc,
-		Children:    []*Node{}}
+		Children:    []*Node{},
+		Visible:     visible}
 	if parentId == "" {
 		tn.root = node
 	} else {
