@@ -18,49 +18,54 @@ type RWMutexUsr struct {
 }
 
 type UserCache struct {
-	RWMutexUsr
-	Item UsersCacheType
+	mu      RWMutexUsr
+	Item    UsersCacheType
+	History UsersCacheHistory
 }
 
 // Кеширование пользователей
 type UsersCacheType map[int]Users
+type UsersCacheHistory map[int]HistoryUser
 
 var UsersCache = Init()
 
 func Init() *UserCache {
 	items := make(UsersCacheType)
+	history := make(UsersCacheHistory)
 
 	cache := UserCache{
-		Item: items,
+		Item:    items,
+		History: history,
 	}
 
 	return &cache
 }
 
 func (uc *UserCache) CheckCache(idUsr int) (err error) {
-	uc.RLock()
+	uc.mu.RLock()
+	isLock := true
 	if _, ok := uc.Item[idUsr]; !ok {
-		uc.RUnlock()
+		uc.mu.RUnlock()
+		isLock = false
 		// Заполняем информацию в кеш из БД
 		user := Users{IdUsr: idUsr}
 		if err = user.CheckUser(); err != nil {
 			err = fmt.Errorf("CheckCache:" + err.Error())
 		} else {
-			uc.Lock()
+			uc.mu.Lock()
 			uc.Item[idUsr] = user
-			uc.Unlock()
+			uc.mu.Unlock()
 		}
 	}
-	isLock := uc.TryRLock()
 	if isLock {
-		uc.RUnlock()
+		uc.mu.RUnlock()
 	}
 	return err
 }
 
 func (uc *UserCache) GetCache(idUsr int) (Users, error) {
-	uc.RLock()
-	defer uc.RUnlock()
+	uc.mu.RLock()
+	defer uc.mu.RUnlock()
 	if v, ok := uc.Item[idUsr]; !ok {
 		return Users{}, fmt.Errorf("GetCache:User not initialised")
 	} else {
@@ -69,8 +74,8 @@ func (uc *UserCache) GetCache(idUsr int) (Users, error) {
 }
 
 func (uc *UserCache) GetCount() (cnt int) {
-	uc.RLock()
-	defer uc.RUnlock()
+	uc.mu.RLock()
+	defer uc.mu.RUnlock()
 	cnt = len(uc.Item)
 	return cnt
 }
@@ -107,6 +112,30 @@ func (uc *UserCache) GetFLName(idUsr int) (FLName string) {
 		FLName = user.FirstName + " " + user.LastName
 	}
 	return FLName
+}
+
+func (uc *UserCache) SetPrevMenu(idUsr int, menu string) {
+	uc.mu.RLock()
+	isLock := true
+	if _, ok := uc.History[idUsr]; !ok {
+		uc.mu.RUnlock()
+		isLock = false
+		uc.mu.Lock()
+		uc.History[idUsr] = HistoryUser{PrevMenu: menu}
+		uc.mu.Unlock()
+	}
+	if isLock {
+		uc.mu.RUnlock()
+	}
+}
+
+func (uc *UserCache) GetPrevMenu(idUsr int) (menu string) {
+	uc.mu.RLock()
+	defer uc.mu.RUnlock()
+	if history, ok := uc.History[idUsr]; ok {
+		menu = history.PrevMenu
+	}
+	return menu
 }
 
 // Кеш типов отслеживаний
