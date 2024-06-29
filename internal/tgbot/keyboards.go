@@ -7,17 +7,23 @@ import (
 
 const (
 	// Comands
-	Start                 string = "start"           // Начало
-	NumberOfUsers         string = "number_of_users" // Получить количество активных пользователей
-	GetCrypto             string = "getcrypto"       // Получить актуальную информацию по криптовалюте
-	SetNotif              string = "setnotif"        // Установить уведомления по изменению цены криптовалюты
-	SetNotifCrypto        string = SetNotif + "_crypto"
-	SetNotifCriterion     string = SetNotif + "_criterion"
-	SetNotifCriterionMore string = SetNotif + "_criterionmore"
-	SetNotifCriterionLess string = SetNotif + "_criterionless"
-	SetNotifPrice         string = SetNotif + "_price"
+	Start                 string = "start"                   // Начало
+	NumberOfUsers         string = "number_of_users"         // Получить количество активных пользователей
+	GetCrypto             string = "getcrypto"               // Получить актуальную информацию по криптовалюте
+	SetNotif              string = "SetNotif"                // Установить уведомления по изменению цены криптовалюты
+	SetNotifCrypto        string = SetNotif + "_" + Crypto   // Выбор или ввод КВ
+	SetNotifCryptoEnter   string = SetNotifCrypto + "_Enter" // Ввод своей КВ
+	SetNotifCriterion     string = SetNotif + "_Criterion"
+	SetNotifCriterionMore string = SetNotifCriterion + "_More"
+	SetNotifCriterionLess string = SetNotifCriterion + "_Less"
+	SetNotifPrice         string = SetNotif + "_Price"
+	SetNotifPriceEnter    string = SetNotifPrice + "_Enter"
+	SetNotifPriceYes      string = SetNotifPrice + "_Yes"
+	SetNotifPriceNo       string = SetNotifPrice + "_No"
 
-	Help string = "help"
+	Help   string = "help"
+	Crypto string = "Crypto"
+	Price  string = "Price"
 )
 
 type tgBotMenu struct {
@@ -34,6 +40,8 @@ func initMenu() *tgBotMenu {
 	buttons.Add(SetNotifCrypto, "Выбрать крипту", SetNotif, true)
 	buttons.Add(SetNotifCriterion, "Установить критерий", SetNotif, false)
 	buttons.Add(SetNotifPrice, "Установить цену", SetNotif, false)
+	buttons.Add(SetNotifPriceYes, "Да", SetNotifPrice, true)
+	buttons.Add(SetNotifPriceNo, "Нет", SetNotifPrice, true)
 	buttons.Add(SetNotifCriterionMore, "Больше >=", SetNotifCriterion, true)
 	buttons.Add(SetNotifCriterionLess, "Меньше <=", SetNotifCriterion, true)
 	buttons.Add(Start, "Назад", SetNotif, true)
