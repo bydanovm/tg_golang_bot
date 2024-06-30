@@ -81,6 +81,7 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 			case SetNotifPrice: // Установить цену
 				// Текст взять из базы (нужен справочник)
 				ans = ChooseSum
+
 			}
 
 			msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
@@ -95,26 +96,41 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 			// Ввод своей КВ
 			case SetNotifCryptoEnter:
 				ans = EnterCrypto
-				msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
-					update.CallbackQuery.Message.MessageID, ans)
-				msg_t.ReplyMarkup = &keyboard
+				msg_t := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID,
+					ans)
+				msg_t.ReplyMarkup = tgbotapi.ForceReply{
+					ForceReply: true,
+				}
+				msg = msg_t
+
+			// Ввод своей суммы отслеживания
+			case SetNotifPriceEnter:
+				ans = EnterSum
+				msg_t := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID,
+					ans)
+				msg_t.ReplyMarkup = tgbotapi.ForceReply{
+					ForceReply: true,
+				}
 				msg = msg_t
 
 			case SetNotifCriterionMore:
 				ans = "Выбран критерий \"Больше\"\n"
+				// msg = tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
+				// 	update.CallbackQuery.Message.MessageID, ans)
 
 			case SetNotifCriterionLess:
 				ans = "Выбран критерий \"Меньше\"\n"
-
+			// msg = tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
+			// 	update.CallbackQuery.Message.MessageID, ans)
 			case SetNotifPriceYes:
 				// Нажата ДА на последнем этапе, возврат в начало
 				// Текст взять из базы (нужен справочник)
-				ans = "Оповещение успешно создано\n"
+				ans = "Отслеживание сохранено\n"
 
 			case SetNotifPriceNo:
 				// Нажата НЕТ на последнем этапе, возврат в начало
 				// Текст взять из базы (нужен справочник)
-				ans = "Вы отменили создание оповещения\n"
+				ans = "Отслеживание не сохранено\n"
 
 			default:
 				// Случай, когда пришло 3 аргумента и выбрана КВ через кнопки
@@ -131,7 +147,7 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 
 				} else if callBackData[1] == Price {
 					// Случай, когда пришло 3 аргумента и выбрана цена через кнопки
-					// Проверить аргумент и сохранить цену в мапу
+					// Сохранить цену в мапу
 					// Переход к подтверждению
 					keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotifPrice), 2)
 
@@ -145,12 +161,17 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 
 			// Для выбора критериев переход к выбору или вводу суммы
 			if update.CallbackQuery.Data == SetNotifCriterionMore || update.CallbackQuery.Data == SetNotifCriterionLess {
-				ans += ChooseSum
+				ans := ChooseSum
 
 				// Тут нужно получить данные о КВ и сформировать меню с предложениями цен
 				prices := []int{1001, 1005, 1010, 999, 995, 990}
+				// if err != nil {
+				// 	services.Logging.WithFields(logrus.Fields{
+				// 		"userId":   update.CallbackQuery.Message.From.ID,
+				// 		"userName": update.CallbackQuery.Message.From.UserName,
+				// 	}).Error(err)
+				// }
 				var row []tgbotapi.InlineKeyboardButton
-
 				for k, v := range prices {
 					btn := tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(v), SetNotifPrice+"_"+strconv.Itoa(v))
 					row = append(row, btn)
@@ -171,8 +192,7 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 				msg = msg_t
 
 			} else if update.CallbackQuery.Data == SetNotifPriceYes || update.CallbackQuery.Data == SetNotifPriceNo {
-				ans += "Здесь можно завести оповещения\n"
-
+				ans += "Здесь можно завести оповещения"
 				keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotif), 2)
 				msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
 					update.CallbackQuery.Message.MessageID, ans)
@@ -189,7 +209,7 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 			ans = "Выбрана криптовалюта: " + update.Message.Text + "\nВыберите критерий"
 			msg_t := tgbotapi.NewMessage(update.Message.Chat.ID,
 				ans)
-			msg_t.ReplyMarkup = keyboard
+			msg_t.ReplyMarkup = &keyboard
 			msg = msg_t
 
 		case EnterSum:
@@ -198,13 +218,9 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 			ans = "Введена сумма: " + update.Message.Text + "\nОтслеживать: {тут то что получилось}\nПодтвердить?"
 			msg_t := tgbotapi.NewMessage(update.Message.Chat.ID,
 				ans)
-			msg_t.ReplyMarkup = keyboard
+			msg_t.ReplyMarkup = &keyboard
 			msg = msg_t
 		}
 	}
 	return msg
 }
-
-// msg_t.ReplyMarkup = tgbotapi.ForceReply{
-// 	ForceReply: true,
-// }
