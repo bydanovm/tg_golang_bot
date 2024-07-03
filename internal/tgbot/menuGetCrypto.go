@@ -1,9 +1,11 @@
 package tgbot
 
 import (
+	"fmt"
 	"strings"
 
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
+	"github.com/mbydanov/tg_golang_bot/internal/coinmarketcup"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/services"
 	"github.com/sirupsen/logrus"
@@ -63,7 +65,22 @@ func menuGetCrypto(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg interfa
 			default:
 				// keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(GetCryptoCurr), 2)
 
-				ans += "Выбрана криптовалюта: " + callBackData[1] + "\nДанные о ней:"
+				// Получение данных из базы
+				cryptos, err := coinmarketcup.GetLatestStruct(callBackData[1])
+				if err == nil {
+					for _, v := range cryptos {
+						if v.Find {
+							// Нужно вычислять количество знаков динамически
+							ans += fmt.Sprintf("Курс 1 %s - %.9f %s\nна %s",
+								v.Crypto.CryptoName,
+								v.Crypto.CryptoLastPrice,
+								"USD",
+								v.Crypto.CryptoUpdate.Format("2006-01-02 15:04:05"))
+						} else {
+							ans += fmt.Sprintf("%s %s", v.Crypto.CryptoName, "не найдена в базе")
+						}
+					}
+				}
 
 				var row []tgbotapi.InlineKeyboardButton
 				row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", GetCrypto))
