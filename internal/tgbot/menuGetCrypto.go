@@ -59,34 +59,20 @@ func menuGetCrypto(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg interfa
 
 		} else if len(callBackData) == 2 && callBackData[0] == GetCrypto {
 			switch update.CallbackQuery.Data {
+			// Ввод КВ вручную
 			case GetCryptoEnter:
+				ans = EnterGetCrypto
+				msg_t := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID,
+					ans)
+				msg_t.ReplyMarkup = tgbotapi.ForceReply{
+					ForceReply: true,
+				}
+				msg = msg_t
+
 			case GetCryptoYet:
 			// Когда пришла в ответе КВ из кнопки
 			default:
-				// keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(GetCryptoCurr), 2)
-
-				// Получение данных из базы
-				cryptos, err := coinmarketcup.GetLatestStruct(callBackData[1])
-				if err == nil {
-					for _, v := range cryptos {
-						if v.Find {
-							// Нужно вычислять количество знаков динамически
-							ans += fmt.Sprintf("Курс 1 %s - %.9f %s\nна %s",
-								v.Crypto.CryptoName,
-								v.Crypto.CryptoLastPrice,
-								"USD",
-								v.Crypto.CryptoUpdate.Format("2006-01-02 15:04:05"))
-						} else {
-							ans += fmt.Sprintf("%s %s", v.Crypto.CryptoName, "не найдена в базе")
-						}
-					}
-				}
-
-				var row []tgbotapi.InlineKeyboardButton
-				row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", GetCrypto))
-				row = append(row, tgbotapi.NewInlineKeyboardButtonData("Установить отслеживание", SetNotifCrypto+"_"+callBackData[1]))
-				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
-
+				ans, keyboard = GetCryptoFunc(callBackData[1])
 				msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
 					update.CallbackQuery.Message.MessageID, ans)
 				msg_t.ReplyMarkup = &keyboard
@@ -96,8 +82,51 @@ func menuGetCrypto(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg interfa
 		} else if len(callBackData) == 3 && callBackData[0] == GetCrypto {
 
 		}
+	} else if update.Message.ReplyToMessage != nil {
+
+		switch update.Message.ReplyToMessage.Text {
+		case EnterGetCrypto:
+			ans, keyboard = GetCryptoFunc(update.Message.Text)
+
+			msg_t := tgbotapi.NewMessage(update.Message.Chat.ID,
+				ans)
+			msg_t.ReplyMarkup = &keyboard
+			msg = msg_t
+		}
 	}
 
 	return msg
 
+}
+
+func GetCryptoFunc(crypto string) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+	// Получение данных из базы
+	cryptos, err := coinmarketcup.GetLatestStruct(crypto)
+	isFind := false
+	if err == nil {
+		for _, v := range cryptos {
+			if v.Find {
+				isFind = true
+				// Нужно вычислять количество знаков динамически
+				ans += fmt.Sprintf("Курс 1 %s - %.9f %s\nна %s\n",
+					v.Crypto.CryptoName,
+					v.Crypto.CryptoLastPrice,
+					"USD",
+					v.Crypto.CryptoUpdate.Format("2006-01-02 15:04:05"))
+			} else {
+				ans += fmt.Sprintf("%s %s", v.Crypto.CryptoName, "не найдена в базе")
+			}
+		}
+	}
+
+	var row []tgbotapi.InlineKeyboardButton
+	row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", GetCrypto))
+	if isFind && len(cryptos) == 1 {
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData("Установить отслеживание", SetNotifCrypto+"_"+crypto))
+	} else {
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData("Ввод", GetCryptoEnter))
+	}
+	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+
+	return ans, keyboard
 }

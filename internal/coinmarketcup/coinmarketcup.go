@@ -210,18 +210,23 @@ func GetLatestStruct(cryptocurrencies string) (cryptos []GetLatestObject, err er
 				database.DCCache[subFields.CryptoId] = d
 			}
 		}
-		// Если нашли все валюты, то возвращаем их
-		if countFind != len(cryptoCur) {
-			// Если не все найдены, то определяем какие валюты мы не нашли
-			for _, v1 := range cryptoCur {
-				for i2 := 0; i2 < len(cryptos); i2++ {
-					// for i2, v2 := range findCryptoCur {
-					if v1 == cryptos[i2].Crypto.CryptoName {
-						break
-					}
-					if v1 != cryptos[i2].Crypto.CryptoName && i2 == len(cryptos)-1 {
-						cryptos = append(cryptos, GetLatestObject{Crypto: database.DictCrypto{CryptoName: v1}, Find: false})
-					}
+	}
+	// Если нашли все валюты, то возвращаем их
+	if countFind != len(cryptoCur) {
+		// Если не все найдены, то определяем какие валюты мы не нашли
+		for _, v1 := range cryptoCur {
+			lenCrypto := len(cryptos)
+			if lenCrypto == 0 {
+				cryptos = append(cryptos, GetLatestObject{Crypto: database.DictCrypto{CryptoName: v1}, Find: false})
+				break
+			}
+			for i2 := 0; i2 < lenCrypto; i2++ {
+				// for i2, v2 := range findCryptoCur {
+				if v1 == cryptos[i2].Crypto.CryptoName {
+					break
+				}
+				if v1 != cryptos[i2].Crypto.CryptoName && i2 == len(cryptos)-1 {
+					cryptos = append(cryptos, GetLatestObject{Crypto: database.DictCrypto{CryptoName: v1}, Find: false})
 				}
 			}
 		}
