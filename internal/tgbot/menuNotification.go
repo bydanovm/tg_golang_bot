@@ -1,10 +1,12 @@
 package tgbot
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
+	"github.com/mbydanov/tg_golang_bot/internal/coinmarketcup"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/services"
 	"github.com/sirupsen/logrus"
@@ -115,11 +117,15 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 
 			case SetNotifCriterionMore:
 				ans = "Выбран критерий \"Больше\"\n"
+				SetNotifCh.SetCriterion(int(update.CallbackQuery.Message.Chat.ID), "Больше")
+
 				// msg = tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
 				// 	update.CallbackQuery.Message.MessageID, ans)
 
 			case SetNotifCriterionLess:
 				ans = "Выбран критерий \"Меньше\"\n"
+				SetNotifCh.SetCriterion(int(update.CallbackQuery.Message.Chat.ID), "Меньше")
+
 			// msg = tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
 			// 	update.CallbackQuery.Message.MessageID, ans)
 			case SetNotifPriceYes:
@@ -138,6 +144,8 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 					// Сохранить КВ в мапу
 					// Переход к выбору критерия
 					keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotifCriterion), 2)
+					// Запись в кеш выбранной КВ
+					SetNotifCh.SetCrypto(int(update.CallbackQuery.Message.Chat.ID), callBackData[2])
 
 					ans += "Выбрана криптовалюта: " + callBackData[2] + "\nВыберите критерий"
 					msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
@@ -147,11 +155,16 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 
 				} else if callBackData[1] == Price {
 					// Случай, когда пришло 3 аргумента и выбрана цена через кнопки
-					// Сохранить цену в мапу
 					// Переход к подтверждению
 					keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotifPrice), 2)
+					// Запись в кеш выбранной цены
+					n, _ := strconv.ParseFloat(callBackData[2], 64)
+					SetNotifCh.SetPrice(int(update.CallbackQuery.Message.Chat.ID), n)
 
-					ans += "Введена цена: " + callBackData[2] + "\nПодтвердить?"
+					// Считывание из кеша всего объекта
+					setNotif := SetNotifCh.GetObject(int(update.CallbackQuery.Message.Chat.ID))
+
+					ans += fmt.Sprintf("Создается отсеживание:\nВалюта - %s\nКритерий - %s\nЦена - %.9f", setNotif.Crypto, setNotif.Criterion, setNotif.Price)
 					msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
 						update.CallbackQuery.Message.MessageID, ans)
 					msg_t.ReplyMarkup = &keyboard
@@ -163,22 +176,37 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 			if update.CallbackQuery.Data == SetNotifCriterionMore || update.CallbackQuery.Data == SetNotifCriterionLess {
 				ans := ChooseSum
 
-				// Тут нужно получить данные о КВ и сформировать меню с предложениями цен
-				prices := []int{1001, 1005, 1010, 999, 995, 990}
-				// if err != nil {
-				// 	services.Logging.WithFields(logrus.Fields{
-				// 		"userId":   update.CallbackQuery.Message.From.ID,
-				// 		"userName": update.CallbackQuery.Message.From.UserName,
-				// 	}).Error(err)
-				// }
+				crypto := SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID))
+				cryptos, _ := coinmarketcup.GetLatestStruct(crypto)
+				isFind := false
+				prices := []float32{}
+
+				if len(cryptos) == 1 {
+					if cryptos[0].Find {
+						isFind = true
+						// Нужно вычислять количество знаков динамически
+						prices = append(prices, cryptos[0].Crypto.CryptoLastPrice*1.01)
+						prices = append(prices, cryptos[0].Crypto.CryptoLastPrice*1.05)
+						prices = append(prices, cryptos[0].Crypto.CryptoLastPrice*1.1)
+						prices = append(prices, cryptos[0].Crypto.CryptoLastPrice*0.99)
+						prices = append(prices, cryptos[0].Crypto.CryptoLastPrice*0.95)
+						prices = append(prices, cryptos[0].Crypto.CryptoLastPrice*0.9)
+					} else {
+						ans += fmt.Sprintf("%s %s", cryptos[0].Crypto.CryptoName, "не найдена в базе")
+					}
+				}
+
 				var row []tgbotapi.InlineKeyboardButton
-				for k, v := range prices {
-					btn := tgbotapi.NewInlineKeyboardButtonData(strconv.Itoa(v), SetNotifPrice+"_"+strconv.Itoa(v))
-					row = append(row, btn)
-					// Делим на N строк по 5 элементов
-					if (k+1)%3 == 0 {
-						keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
-						row = nil
+				if isFind {
+					for k, v := range prices {
+						n := fmt.Sprintf("%.9f", v)
+						btn := tgbotapi.NewInlineKeyboardButtonData(n, SetNotifPrice+"_"+n)
+						row = append(row, btn)
+						// Делим на N строк по 3 элемента
+						if (k+1)%3 == 0 {
+							keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+							row = nil
+						}
 					}
 				}
 				row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", Start))
@@ -207,6 +235,9 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 			keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotifCriterion), 2)
 
 			ans = "Выбрана криптовалюта: " + update.Message.Text + "\nВыберите критерий"
+			// Запись в кеш введенной КВ
+			SetNotifCh.SetCrypto(int(update.Message.Chat.ID), update.Message.Text)
+
 			msg_t := tgbotapi.NewMessage(update.Message.Chat.ID,
 				ans)
 			msg_t.ReplyMarkup = &keyboard
@@ -215,7 +246,15 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 		case EnterSum:
 			keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotifPrice), 2)
 
-			ans = "Введена сумма: " + update.Message.Text + "\nОтслеживать: {тут то что получилось}\nПодтвердить?"
+			// Запись в кеш введенной цены
+			n, _ := strconv.ParseFloat(update.Message.Text, 64)
+			SetNotifCh.SetPrice(int(update.Message.Chat.ID), n)
+
+			// Считывание из кеша всего объекта
+			setNotif := SetNotifCh.GetObject(int(update.Message.Chat.ID))
+
+			ans += fmt.Sprintf("Создается отсеживание:\nВалюта - %s\nКритерий - %s\nЦена - %.9f", setNotif.Crypto, setNotif.Criterion, setNotif.Price)
+
 			msg_t := tgbotapi.NewMessage(update.Message.Chat.ID,
 				ans)
 			msg_t.ReplyMarkup = &keyboard
