@@ -19,6 +19,11 @@ const (
 	EnterSum     string = "Введите сумму для отслеживания"
 )
 
+type PriceInfo struct {
+	Koeff int
+	Price float32
+}
+
 // Функция обработки меню по "Оповещениям"
 func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg interface{}) {
 	var ans string
@@ -179,18 +184,18 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 				crypto := SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID))
 				cryptos, _ := coinmarketcup.GetLatestStruct(crypto)
 				isFind := false
-				prices := []float32{}
+				prices := []PriceInfo{}
 
 				if len(cryptos) == 1 {
 					if cryptos[0].Find {
 						isFind = true
 						// Нужно вычислять количество знаков динамически
-						prices = append(prices, cryptos[0].Crypto.CryptoLastPrice*1.01)
-						prices = append(prices, cryptos[0].Crypto.CryptoLastPrice*1.05)
-						prices = append(prices, cryptos[0].Crypto.CryptoLastPrice*1.1)
-						prices = append(prices, cryptos[0].Crypto.CryptoLastPrice*0.99)
-						prices = append(prices, cryptos[0].Crypto.CryptoLastPrice*0.95)
-						prices = append(prices, cryptos[0].Crypto.CryptoLastPrice*0.9)
+						prices = append(prices, PriceInfo{1, cryptos[0].Crypto.CryptoLastPrice * 1.01})
+						prices = append(prices, PriceInfo{5, cryptos[0].Crypto.CryptoLastPrice * 1.05})
+						prices = append(prices, PriceInfo{10, cryptos[0].Crypto.CryptoLastPrice * 1.1})
+						prices = append(prices, PriceInfo{-1, cryptos[0].Crypto.CryptoLastPrice * 0.99})
+						prices = append(prices, PriceInfo{-5, cryptos[0].Crypto.CryptoLastPrice * 0.95})
+						prices = append(prices, PriceInfo{-10, cryptos[0].Crypto.CryptoLastPrice * 0.9})
 					} else {
 						ans += fmt.Sprintf("%s %s", cryptos[0].Crypto.CryptoName, "не найдена в базе")
 					}
@@ -199,7 +204,7 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 				var row []tgbotapi.InlineKeyboardButton
 				if isFind {
 					for k, v := range prices {
-						n := fmt.Sprintf("%.9f", v)
+						n := fmt.Sprintf(FormatFloatToString(v.Price)+" (%+d%%)", v.Price, v.Koeff)
 						btn := tgbotapi.NewInlineKeyboardButtonData(n, SetNotifPrice+"_"+n)
 						row = append(row, btn)
 						// Делим на N строк по 3 элемента
@@ -262,4 +267,22 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 		}
 	}
 	return msg
+}
+
+func FormatFloatToString(number float32) (format string) {
+	// Установим формат общей длиной в 7 знаков
+	if number >= 100000 {
+		format = "%.1f"
+	} else if number >= 10000 {
+		format = "%.2f"
+	} else if number >= 1000 {
+		format = "%.3f"
+	} else if number >= 100 {
+		format = "%.4f"
+	} else if number >= 10 {
+		format = "%.5f"
+	} else {
+		format = "%.6f"
+	}
+	return format
 }
