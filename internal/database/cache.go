@@ -18,24 +18,20 @@ type RWMutexUsr struct {
 }
 
 type UserCache struct {
-	mu      RWMutexUsr
-	Item    UsersCacheType
-	History UsersCacheHistory
+	mu   RWMutexUsr
+	Item UsersCacheType
 }
 
 // Кеширование пользователей
 type UsersCacheType map[int]Users
-type UsersCacheHistory map[int]HistoryUser
 
 var UsersCache = Init()
 
 func Init() *UserCache {
 	items := make(UsersCacheType)
-	history := make(UsersCacheHistory)
 
 	cache := UserCache{
-		Item:    items,
-		History: history,
+		Item: items,
 	}
 
 	return &cache
@@ -112,30 +108,6 @@ func (uc *UserCache) GetFLName(idUsr int) (FLName string) {
 		FLName = user.FirstName + " " + user.LastName
 	}
 	return FLName
-}
-
-func (uc *UserCache) SetPrevMenu(idUsr int, menu string) {
-	uc.mu.RLock()
-	isLock := true
-	if _, ok := uc.History[idUsr]; !ok {
-		uc.mu.RUnlock()
-		isLock = false
-		uc.mu.Lock()
-		uc.History[idUsr] = HistoryUser{PrevMenu: menu}
-		uc.mu.Unlock()
-	}
-	if isLock {
-		uc.mu.RUnlock()
-	}
-}
-
-func (uc *UserCache) GetPrevMenu(idUsr int) (menu string) {
-	uc.mu.RLock()
-	defer uc.mu.RUnlock()
-	if history, ok := uc.History[idUsr]; ok {
-		menu = history.PrevMenu
-	}
-	return menu
 }
 
 // Кеш типов отслеживаний

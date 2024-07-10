@@ -3,12 +3,10 @@ package tgbot
 import (
 	"fmt"
 	"os"
-	"reflect"
 	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
-	"github.com/mbydanov/tg_golang_bot/internal/coinmarketcup"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 	"github.com/mbydanov/tg_golang_bot/internal/notifications"
@@ -20,6 +18,7 @@ import (
 
 // Создаем бота
 func TelegramBot(chanModules chan models.StatusChannel) {
+	var msg interface{}
 	// Создаем бота
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TOKEN"))
 	if err != nil {
@@ -32,21 +31,6 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 	// Устанавливаем время обновления
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
-
-	// // Функция отправки сообщения об ошибке из внешних сервисов
-	// go func(chatID int64) {
-	// 	for {
-	// 		// Отправляем сообщение об ошибке
-	// 		val, ok := <-statusRetriever
-	// 		if ok {
-	// 			if val.MsgError != nil {
-	// 				msg := tgbotapi.NewMessage(chatID, val.MsgError.Error())
-	// 				bot.Send(msg)
-	// 				services.Logging.Error(val.MsgError.Error())
-	// 			}
-	// 		}
-	// 	}
-	// }(786751823)
 
 	// Функция получения сообщений от модулей
 	go func() {
@@ -84,341 +68,68 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 
 	for update := range updates {
 		// Авторизация пользователя
-		userId, err := checkAuthUser(bot, &update)
+		_, err := checkAuthUser(bot, &update)
 		if err != nil {
 			services.Logging.WithFields(logrus.Fields{
 				"module": "tgbot",
 			}).Error(err.Error())
 		}
-		if update.Message == nil && update.InlineQuery != nil {
-			// Обработка inline-режима
-			query := update.InlineQuery.Query
-			filteredCrypto := Filter(database.DCCache.GetAllCache(), func(dc database.DictCrypto) bool {
-				return strings.Index(strings.ToUpper(dc.CryptoName), strings.ToUpper(query)) >= 0
-			})
-			// Логирование
-			services.Logging.WithFields(logrus.Fields{
-				"userId":   update.InlineQuery.From.ID,
-				"userName": update.InlineQuery.From.UserName,
-				"query":    query,
-				"filtered": filteredCrypto,
-			}).Info()
+		msg = menuGetCrypto(&update, keyboardBot)
+		if msg == nil {
+			msg = menuNotification(&update, keyboardBot)
+		}
 
-			var articles []interface{}
-			if len(filteredCrypto) == 0 {
-				// Если ничего не найдено - выводим топ 10
-				top10cur, err := database.DCCache.GetTop10Cache()
-				if err != nil {
-					services.Logging.WithFields(logrus.Fields{
-						"userId":   update.InlineQuery.From.ID,
-						"userName": update.InlineQuery.From.UserName,
-					}).Error(err)
-				}
-				for _, v := range top10cur {
-					text := fmt.Sprintf("Криптовалюта: %s\nЦена: %.9f %s",
-						v.CryptoName,
-						v.CryptoLastPrice,
-						"USD",
-					)
-					msg := tgbotapi.NewInlineQueryResultArticleMarkdown(v.CryptoName, v.CryptoName, text)
-					articles = append(articles, msg)
-				}
-			} else {
-				for k, v := range filteredCrypto {
-					text := fmt.Sprintf("Криптовалюта: %s\nЦена: %.9f %s",
-						v.CryptoName,
-						v.CryptoLastPrice,
-						"USD",
-					)
-					msg := tgbotapi.NewInlineQueryResultArticleMarkdown(v.CryptoName, v.CryptoName, text)
-					articles = append(articles, msg)
-					if k >= 10 {
-						break
-					}
-				}
+		var command = ""
 
+		if update.Message != nil {
+			command = update.Message.Command()
+			if command != "" {
+				// Обработка команд
+				// start - Начало
+				// number_of_users - Получить количество активных пользователей
+				// getcrypto - Получить актуальную информацию по криптовалюте
+				// setnotif - Установить уведомления по изменению цены криптовалюты
+				switch command {
+				case Start:
+					// Проверяем есть ли пользователь в кеше или базе
+					msg = menuStart(&update, keyboardBot)
+				default:
+					ans := "Команда /" + command + " не найдена.\n" +
+						"Воспользуйся командой /" + Start + " для знакомства со мной."
+
+					// Отправлем сообщение
+					msg = tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID),
+						ans)
+				}
 			}
-			inlineConfig := tgbotapi.InlineConfig{
-				InlineQueryID: update.InlineQuery.ID,
-				IsPersonal:    true,
-				CacheTime:     0,
-				Results:       articles,
-			}
-			_, err = bot.AnswerInlineQuery(inlineConfig)
-			if err != nil {
+		}
+		if update.CallbackQuery != nil {
+			// Проверка команд
+			callback := tgbotapi.NewCallback(update.CallbackQuery.ID, "")
+			callback.ShowAlert = true
+			if _, err := bot.AnswerCallbackQuery(callback); err != nil {
 				services.Logging.WithFields(logrus.Fields{
-					"userId":   database.UsersCache.GetUserId(update.InlineQuery.From.ID),
-					"userName": database.UsersCache.GetUserName(update.InlineQuery.From.ID),
-					"type":     "inline",
-				}).Info(err)
+					"userId":   update.CallbackQuery.Message.Chat.ID,
+					"userName": update.CallbackQuery.Message.From.UserName,
+					"type":     "callback_answer",
+					"command":  update.CallbackQuery.Data,
+				}).Error()
 			}
-		} else {
-			var command = ""
-			var param = ""
-			message := []string{}
-			if update.Message != nil {
-				command = update.Message.Command()
-				param = update.Message.CommandArguments()
-				if command != "" {
-					services.Logging.WithFields(logrus.Fields{
-						"userId":   database.UsersCache.GetUserId(update.Message.From.ID),
-						"userName": database.UsersCache.GetUserName(update.Message.From.ID),
-						"type":     "command",
-						"args":     param,
-					}).Info(command)
-					// Обработка команд
-					// start - Начало
-					// number_of_users - Получить количество активных пользователей
-					// getcrypto - Получить актуальную информацию по криптовалюте
-					// setnotif - Установить уведомления по изменению цены криптовалюты
-					switch command {
-					case Start:
-						// Проверяем есть ли пользователь в кеше или базе
-						if userId := database.UsersCache.GetUserId(update.Message.From.ID); userId == 0 {
-							// Пользователь не в кеше, ищем в БД, если не находим, то добавляем нового
-							// Единственная точка входа, где пользователь может добавиться в БД
-							user := database.Users{
-								IdUsr:     update.Message.From.ID,
-								TsUsr:     time.Now(),
-								NameUsr:   update.Message.From.UserName,
-								FirstName: update.Message.From.FirstName,
-								LastName:  update.Message.From.LastName,
-								LangCode:  update.Message.From.LanguageCode,
-								IsBot:     update.Message.From.IsBot,
-								IsBanned:  false,
-								ChatIdUsr: update.Message.Chat.ID,
-								IdLvlSec:  5}
-							// Поиск с последующим добавлением
-							if err := user.CheckUser(); err != nil {
-								// Отправляем сообщение в лог об ошибке
-								services.Logging.Warn(err.Error())
-							} else {
-								// Кешируем добавленного пользователя
-								if err := database.UsersCache.CheckCache(update.Message.From.ID); err != nil {
-									services.Logging.Warn(err.Error())
-								}
-							}
-						}
-						// Отправлем приветственное сообщение
-						ans := "Привет! Я - " + os.Getenv("BOT_NAME") + " помогу тебе знать актуальную информацию по криптовалюте\n" +
-							"Используй клавиатуру ниже, чтобы узнать интересующую информацию.\n"
-						message = append(message,
-							ans)
-						msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID),
-							ans)
-						msg.ReplyMarkup = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkup(), 2)
-
-						bot.Send(msg)
-					default:
-						prevMenu := database.UsersCache.GetPrevMenu(userId)
-						// Предыдущее меню - выбор крипты для отслеживания
-						if prevMenu == SetNotifCrypto {
-
-						} else {
-							ans := "Команда /" + command + " не найдена.\n" +
-								"Воспользуйся командой /" + Start + " для знакомства со мной."
-							message = append(message, ans)
-
-							// Отправлем сообщение
-							msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID),
-								ans)
-							bot.Send(msg)
-						}
-					}
-					// Логируем ответ бота на команды
-					services.Logging.WithFields(logrus.Fields{
-						"userId":   database.UsersCache.GetUserId(update.Message.From.ID),
-						"userName": database.UsersCache.GetUserName(update.Message.From.ID),
-						"type":     "answer",
-					}).Info(message)
-				} else {
-					// Обработка сообщений с ForceReply
-					if update.Message.ReplyToMessage != nil {
-						switch update.Message.ReplyToMessage.Text {
-						case "Введите криптовалюту для отслеживания":
-							ans := "Выбрана криптовалюта: " + update.Message.Text + "\nВыберите критерий"
-							msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(int(update.Message.Chat.ID)),
-								ans)
-
-							keyboard := MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotifCriterion), 2)
-							msg.ReplyMarkup = keyboard
-
-							bot.Send(msg)
-						}
-					} else {
-						if reflect.TypeOf(update.Message.Text).Kind() == reflect.String && update.Message.Text != "" {
-							ans := update.Message.Text + " что такое, я такого не знаю.\n" +
-								"Воспользуйся командой /" + Start + " для знакомства со мной."
-							message = append(message, ans)
-							msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID),
-								ans)
-							bot.Send(msg)
-						} else {
-							ans := update.Message.Text + " что такое, я такого не знаю.\n" +
-								"Воспользуйся командой /" + Start + " для знакомства со мной."
-							message = append(message, ans)
-							msg := tgbotapi.NewMessage(update.Message.Chat.ID,
-								ans)
-							bot.Send(msg)
-						}
-					}
-				}
-				// Собираем статистику в базу
-				if err := database.CollectData(database.UsersCache.GetUserName(update.Message.From.ID),
-					database.UsersCache.GetChatId(update.Message.From.ID), update.Message.Text, message); err != nil {
-					services.Logging.WithFields(logrus.Fields{
-						"userId":   database.UsersCache.GetUserId(update.Message.From.ID),
-						"userName": database.UsersCache.GetUserName(update.Message.From.ID),
-					}).Error("tgbot:", err.Error())
-				}
-			} else {
-				// Обработка callback
-				if update.CallbackQuery != nil {
-					// Проверка команд
-					callback := tgbotapi.NewCallback(update.CallbackQuery.ID, "")
-					callback.ShowAlert = true
-					if _, err := bot.AnswerCallbackQuery(callback); err != nil {
-						services.Logging.WithFields(logrus.Fields{
-							"userId":   update.CallbackQuery.Message.Chat.ID,
-							"userName": update.CallbackQuery.Message.From.UserName,
-							"type":     "callback_answer",
-							"command":  update.CallbackQuery.Data,
-						}).Error()
-					}
-					// Разберем data callback по структуре command_cryptocur
-					callBackData := strings.Split(update.CallbackQuery.Data, "_")
-					// Получение инфо о крипте
-					if len(callBackData) == 1 {
-						// Получение InlineKeyboard со списком крипты топ 10?
-						if callBackData[0] == GetCrypto {
-							ans := "Список крипты\n"
-
-							msg := tgbotapi.NewEditMessageText(database.UsersCache.GetChatId(int(update.CallbackQuery.Message.Chat.ID)),
-								update.CallbackQuery.Message.MessageID, ans)
-							keyboard := tgbotapi.InlineKeyboardMarkup{}
-							top10cur, err := database.DCCache.GetTop10Cache()
-							if err != nil {
-								services.Logging.WithFields(logrus.Fields{
-									"userId":   database.UsersCache.GetUserId(int(update.CallbackQuery.Message.Chat.ID)),
-									"userName": database.UsersCache.GetUserName(int(update.CallbackQuery.Message.Chat.ID)),
-								}).Error(err)
-							}
-							var row []tgbotapi.InlineKeyboardButton
-							for k, v := range top10cur {
-								btn := tgbotapi.NewInlineKeyboardButtonData(v.CryptoName, GetCrypto+"_"+v.CryptoName)
-								row = append(row, btn)
-								// Делим на N строк по 5 элементов
-								if (k+1)%5 == 0 {
-									keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
-									row = nil
-								}
-							}
-							row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", Start))
-							row = append(row, tgbotapi.NewInlineKeyboardButtonData("Еще", GetCrypto+"_next"))
-							keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
-							msg.ReplyMarkup = &keyboard
-							bot.Send(msg)
-						} else if callBackData[0] == Start {
-							if userId := database.UsersCache.GetChatId(userId); userId == 0 {
-								// Пользователь не в кеше, ищем в БД, если не находим, то добавляем нового
-								// Единственная точка входа, где пользователь может добавиться в БД
-								user := database.Users{
-									IdUsr:     update.Message.From.ID,
-									TsUsr:     time.Now(),
-									NameUsr:   update.Message.From.UserName,
-									FirstName: update.Message.From.FirstName,
-									LastName:  update.Message.From.LastName,
-									LangCode:  update.Message.From.LanguageCode,
-									IsBot:     update.Message.From.IsBot,
-									IsBanned:  false,
-									ChatIdUsr: update.Message.Chat.ID,
-									IdLvlSec:  5}
-								// Поиск с последующим добавлением
-								if err := user.CheckUser(); err != nil {
-									// Отправляем сообщение в лог об ошибке
-									services.Logging.Warn(err.Error())
-								} else {
-									// Кешируем добавленного пользователя
-									if err := database.UsersCache.CheckCache(update.Message.From.ID); err != nil {
-										services.Logging.Warn(err.Error())
-									}
-								}
-							}
-							// Отправлем приветственное сообщение
-							ans := "Привет! Я - " + os.Getenv("BOT_NAME") + " помогу тебе знать актуальную информацию по криптовалюте\n" +
-								"Используй клавиатуру ниже, чтобы узнать интересующую информацию.\n"
-							// msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(userId),
-							// 	ans)
-							msg := tgbotapi.NewEditMessageText(database.UsersCache.GetChatId(int(update.CallbackQuery.Message.Chat.ID)),
-								update.CallbackQuery.Message.MessageID, ans)
-
-							keyboard := MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkup(), 2)
-							msg.ReplyMarkup = &keyboard
-
-							bot.Send(msg)
-
-						} else if callBackData[0] == SetNotif {
-							ans := "Здесь можно завести оповещения\n"
-							msg := tgbotapi.NewEditMessageText(database.UsersCache.GetChatId(int(update.CallbackQuery.Message.Chat.ID)),
-								update.CallbackQuery.Message.MessageID, ans)
-
-							keyboard := MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotif), 2)
-							msg.ReplyMarkup = &keyboard
-
-							bot.Send(msg)
-						}
-					} else if callBackData[0] == GetCrypto {
-						message = coinmarketcup.GetLatest(callBackData[1])
-						// Проходим через срез и отправляем каждый элемент пользователю
-						for _, val := range message {
-							// Логируем ответ бота
-							services.Logging.WithFields(logrus.Fields{
-								"userId":   database.UsersCache.GetUserId(int(update.CallbackQuery.Message.Chat.ID)),
-								"userName": database.UsersCache.GetUserName(int(update.CallbackQuery.Message.Chat.ID)),
-								"type":     "callback",
-								"command":  GetCrypto,
-								"currency": callBackData[1],
-							}).Info(val)
-							// Отправлем сообщение
-							msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(int(update.CallbackQuery.Message.Chat.ID)), val)
-							bot.Send(msg)
-						}
-					} else if callBackData[0] == `next` && callBackData[1] == GetCrypto {
-						msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(int(update.CallbackQuery.Message.Chat.ID)),
-							"Введите свои криптовалюты")
-						bot.Send(msg)
-					} else if callBackData[0] == SetNotif {
-						// Запоминаем текущее меню
-						database.UsersCache.SetPrevMenu(userId, update.CallbackQuery.Data)
-
-						// Оповещения
-						switch update.CallbackQuery.Data {
-						case SetNotifCrypto:
-							ans := "Введите криптовалюту для отслеживания"
-							msg := tgbotapi.NewMessage(database.UsersCache.GetChatId(int(update.CallbackQuery.Message.Chat.ID)),
-								ans)
-
-							msg.ReplyMarkup = tgbotapi.ForceReply{
-								ForceReply: true,
-							}
-
-							bot.Send(msg)
-
-						case SetNotifCriterionMore:
-							ans := "Выбран критерий \"Больше\"\n"
-							msg := tgbotapi.NewEditMessageText(database.UsersCache.GetChatId(int(update.CallbackQuery.Message.Chat.ID)),
-								update.CallbackQuery.Message.MessageID, ans)
-							bot.Send(msg)
-						case SetNotifCriterionLess:
-							ans := "Выбран критерий \"Меньше\"\n"
-							msg := tgbotapi.NewEditMessageText(database.UsersCache.GetChatId(int(update.CallbackQuery.Message.Chat.ID)),
-								update.CallbackQuery.Message.MessageID, ans)
-							bot.Send(msg)
-
-						}
-					}
+			// Разберем data callback по структуре command_cryptocur
+			callBackData := strings.Split(update.CallbackQuery.Data, "_")
+			// Получение инфо о крипте
+			if len(callBackData) == 1 {
+				if callBackData[0] == Start {
+					msg = menuStart(&update, keyboardBot)
 				}
 			}
+		}
+
+		switch msgConv := msg.(type) {
+		case tgbotapi.EditMessageTextConfig:
+			bot.Send(msgConv)
+		case tgbotapi.MessageConfig:
+			bot.Send(msgConv)
 		}
 	}
 }
@@ -475,4 +186,90 @@ func checkAuthUser(bot *tgbotapi.BotAPI, update *tgbotapi.Update) (userId int, e
 	}
 
 	return userId, err
+}
+func FindUserIdFromUpdate(update *tgbotapi.Update) (userInfo UserInfo) {
+	if update.Message != nil {
+		userInfo.UserId = update.Message.From.ID
+		userInfo.ChatId = update.Message.Chat.ID
+		userInfo.UserName = update.Message.From.UserName
+		userInfo.FirstName = update.Message.From.FirstName
+		userInfo.LastName = update.Message.From.LastName
+		userInfo.LanguageCode = update.Message.From.LanguageCode
+		userInfo.IsBot = update.Message.From.IsBot
+	} else if update.CallbackQuery != nil {
+		userInfo.UserId = update.CallbackQuery.From.ID
+		userInfo.ChatId = update.CallbackQuery.Message.Chat.ID
+		userInfo.UserName = update.CallbackQuery.Message.From.UserName
+		userInfo.FirstName = update.CallbackQuery.Message.From.FirstName
+		userInfo.LastName = update.CallbackQuery.Message.From.LastName
+		userInfo.LanguageCode = update.CallbackQuery.Message.From.LanguageCode
+		userInfo.IsBot = update.CallbackQuery.Message.From.IsBot
+	} else {
+		userInfo.UserId = -1
+		userInfo.ChatId = -1
+		userInfo.UserName = ``
+		userInfo.FirstName = ``
+		userInfo.LastName = ``
+		userInfo.LanguageCode = ``
+		userInfo.IsBot = false
+	}
+	return userInfo
+}
+func menuStart(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg interface{}) {
+	var ans string
+	var keyboard tgbotapi.InlineKeyboardMarkup
+
+	userInfo := FindUserIdFromUpdate(update)
+	// Проверяем есть ли пользователь в кеше или базе
+	if userId := database.UsersCache.GetUserId(userInfo.UserId); userId == 0 {
+		// Пользователь не в кеше, ищем в БД, если не находим, то добавляем нового
+		// Единственная точка входа, где пользователь может добавиться в БД
+		user := database.Users{
+			IdUsr:     userInfo.UserId,
+			TsUsr:     time.Now(),
+			NameUsr:   userInfo.UserName,
+			FirstName: userInfo.FirstName,
+			LastName:  userInfo.LastName,
+			LangCode:  userInfo.LanguageCode,
+			IsBot:     userInfo.IsBot,
+			IsBanned:  false,
+			ChatIdUsr: userInfo.ChatId,
+			IdLvlSec:  5}
+		// Поиск с последующим добавлением
+		if err := user.CheckUser(); err != nil {
+			// Отправляем сообщение в лог об ошибке
+			services.Logging.Warn(err.Error())
+		} else {
+			// Кешируем добавленного пользователя
+			if err := database.UsersCache.CheckCache(userInfo.UserId); err != nil {
+				services.Logging.Warn(err.Error())
+			}
+		}
+	}
+	// Отправлем приветственное сообщение
+	ans = "Привет! Я - " + os.Getenv("BOT_NAME") + " помогу тебе знать актуальную информацию по криптовалюте\n" +
+		"Используй кнопки ниже, чтобы узнать интересующую информацию.\n"
+
+	keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkup(), 2)
+
+	if update.CallbackQuery != nil &&
+		update.CallbackQuery.Message.From.UserName == os.Getenv("BOT_NAME") {
+		msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
+			update.CallbackQuery.Message.MessageID, ans)
+		msg_t.ReplyMarkup = &keyboard
+		msg = msg_t
+	} else if update.Message != nil &&
+		update.Message.From.UserName == os.Getenv("BOT_NAME") {
+		msg_t := tgbotapi.NewEditMessageText(update.Message.Chat.ID,
+			update.Message.MessageID, ans)
+		msg_t.ReplyMarkup = &keyboard
+		msg = msg_t
+	} else {
+		msg_t := tgbotapi.NewMessage(database.UsersCache.GetChatId(userInfo.UserId),
+			ans)
+		msg_t.ReplyMarkup = &keyboard
+		msg = msg_t
+	}
+
+	return msg
 }

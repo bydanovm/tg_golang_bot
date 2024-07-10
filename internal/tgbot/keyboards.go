@@ -43,6 +43,7 @@ func initMenu() *tgBotMenu {
 	// buttons.Add(GetCrypto, "Назад", GetCryptoCurr, true)
 	// buttons.Add(SetNotifCrypto, "Установить отслеживание", GetCryptoCurr, true)
 	buttons.Add(SetNotif, "Оповещения", "0", true)
+	buttons.Add(Start, "Назад", SetNotif, true)
 	buttons.Add(SetNotifCrypto, "Выбрать крипту", SetNotif, true)
 	buttons.Add(SetNotifCriterion, "Установить критерий", SetNotif, false)
 	buttons.Add(SetNotifPrice, "Установить цену", SetNotif, false)
@@ -50,7 +51,6 @@ func initMenu() *tgBotMenu {
 	buttons.Add(SetNotifPriceNo, "Нет", SetNotifPrice, true)
 	buttons.Add(SetNotifCriterionMore, "Больше >=", SetNotifCriterion, true)
 	buttons.Add(SetNotifCriterionLess, "Меньше <=", SetNotifCriterion, true)
-	buttons.Add(Start, "Назад", SetNotif, true)
 	buttons.Add(Help, "Справка", "0", true)
 
 	menu := &tgBotMenu{

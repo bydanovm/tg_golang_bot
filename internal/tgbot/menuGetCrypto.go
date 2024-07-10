@@ -108,11 +108,10 @@ func GetCryptoFunc(crypto string) (ans string, keyboard tgbotapi.InlineKeyboardM
 			if v.Find {
 				isFind = true
 				// Нужно вычислять количество знаков динамически
-				ans += fmt.Sprintf("Курс 1 %s - %.9f %s\nна %s\n",
+				ans += fmt.Sprintf("1 %s = %.9f %s",
 					v.Crypto.CryptoName,
 					v.Crypto.CryptoLastPrice,
-					"USD",
-					v.Crypto.CryptoUpdate.Format("2006-01-02 15:04:05"))
+					"$")
 			} else {
 				ans += fmt.Sprintf("%s %s", v.Crypto.CryptoName, "не найдена в базе")
 			}
