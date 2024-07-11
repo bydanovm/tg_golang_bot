@@ -176,7 +176,8 @@ func (ttc *TrackingCryptoCache) CheckAllCache() error {
 	if _, ok := t[1]; !ok {
 		// Заполняем информацию в кеш из БД
 		expLst := []Expressions{
-			{Key: "OnTrkCrp", Operator: EQ, Value: "true"},
+			// {Key: "OnTrkCrp", Operator: EQ, Value: "true"},
+			{Key: "IdTrkCrp", Operator: NotEQ, Value: "0"},
 		}
 		rs, find, _, err := ReadDataRow(&TrackingCrypto{}, expLst, 0)
 		if err != nil {
@@ -207,14 +208,9 @@ func (ttc *TrackingCryptoCache) GetCache(id int) (TrackingCrypto, error) {
 func (ttc *TrackingCryptoCache) GetCacheLastId() int {
 	t := *ttc
 	var maxId int
-	if _, ok := t[1]; ok {
-		for maxId = range t {
-			break
-		}
-		for n := range t {
-			if n > maxId {
-				maxId = n
-			}
+	for k, _ := range t {
+		if k > maxId {
+			maxId = k
 		}
 	}
 	return maxId + 1

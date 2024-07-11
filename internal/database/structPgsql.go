@@ -97,9 +97,6 @@ type Users struct {
 	ChatIdUsr int64     `sql_type:"NUMERIC(15,0) NOT NULL"`
 	IdLvlSec  int       `sql_type:"INTEGER REFERENCES levelssecure (idlvlsec)"`
 }
-type HistoryUser struct {
-	PrevMenu string
-}
 
 func (u *Users) CheckUser() error {
 	if u.IdUsr == 0 {

@@ -122,22 +122,62 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 
 			case SetNotifCriterionMore:
 				ans = "Выбран критерий \"Больше\"\n"
-				SetNotifCh.SetCriterion(int(update.CallbackQuery.Message.Chat.ID), "Больше")
+				SetNotifCh.SetCriterion(int(update.CallbackQuery.Message.Chat.ID), "+")
 
 				// msg = tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
 				// 	update.CallbackQuery.Message.MessageID, ans)
 
 			case SetNotifCriterionLess:
 				ans = "Выбран критерий \"Меньше\"\n"
-				SetNotifCh.SetCriterion(int(update.CallbackQuery.Message.Chat.ID), "Меньше")
+				SetNotifCh.SetCriterion(int(update.CallbackQuery.Message.Chat.ID), "-")
 
 			// msg = tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
 			// 	update.CallbackQuery.Message.MessageID, ans)
 			case SetNotifPriceYes:
 				// Нажата ДА на последнем этапе, возврат в начало
-				// Текст взять из базы (нужен справочник)
-				ans = "Отслеживание сохранено\n"
+				// Определить КВ по мнемонике
+				idCrpt := database.DCCacheKeys.GetCacheIdByName(SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID)))
+				if idCrpt == 0 {
+					ans += fmt.Sprintf("Криптовалюта %s не найдена.\nИсправьте команду и повторите запрос\n", SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID)))
+				}
+				// Найти Тип отслеживания
+				idType := 0
+				if SetNotifCh.GetCriterion(int(update.CallbackQuery.Message.Chat.ID)) == "+" {
+					idType = database.TypeTCCacheKeys.GetCacheIdByName("RAISE_V")
+				} else if SetNotifCh.GetCriterion(int(update.CallbackQuery.Message.Chat.ID)) == "-" {
+					idType = database.TypeTCCacheKeys.GetCacheIdByName("FALL_V")
+				} else {
+					ans += "Неверный тип отслеживания\nИсправьте команду и повторите запрос\n"
+				}
+				// Установка лимита
+				limit := database.Limits{}
+				if ans == "" {
+					limit = database.Limits{
+						IdLmt:       database.LmtCache.GetCacheLastId(),
+						ValAvailLmt: database.LmtCacheKeys["LMT003"].StdValLmt,
+						ActiveLmt:   true,
+						UserId:      update.CallbackQuery.From.ID,
+						LtmDctId:    database.LmtCacheKeys["LMT003"].IdLmtDct,
+					}
+					if err := limit.SetLimit(); err != nil {
+						ans += fmt.Sprintf("tgbot:%s\n", err.Error())
+					}
+				}
 
+				tracking := database.TrackingCrypto{
+					IdTrkCrp:    database.TCCache.GetCacheLastId(),
+					DctCrpId:    idCrpt,
+					TypTrkCrpId: idType,
+					LmtId:       limit.IdLmt,
+					UserId:      update.CallbackQuery.From.ID,
+					ValTrkCrp:   SetNotifCh.GetPrice(int(update.CallbackQuery.Message.Chat.ID)),
+					OnTrkCrp:    true,
+				}
+				if err := tracking.SetTracking(); err != nil {
+					ans += fmt.Sprintf("tgbot:%s\n", err.Error())
+				} else {
+					ans += fmt.Sprintf("Отслеживание по криптовалюте %s успешно добавлено\n", SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID)))
+				}
 			case SetNotifPriceNo:
 				// Нажата НЕТ на последнем этапе, возврат в начало
 				// Текст взять из базы (нужен справочник)
@@ -163,8 +203,8 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 					// Переход к подтверждению
 					keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotifPrice), 2)
 					// Запись в кеш выбранной цены
-					n, _ := strconv.ParseFloat(callBackData[2], 64)
-					SetNotifCh.SetPrice(int(update.CallbackQuery.Message.Chat.ID), n)
+					n, _ := strconv.ParseFloat(callBackData[2], 32)
+					SetNotifCh.SetPrice(int(update.CallbackQuery.Message.Chat.ID), float32(n))
 
 					// Считывание из кеша всего объекта
 					setNotif := SetNotifCh.GetObject(int(update.CallbackQuery.Message.Chat.ID))
@@ -204,8 +244,9 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 				var row []tgbotapi.InlineKeyboardButton
 				if isFind {
 					for k, v := range prices {
+						price := fmt.Sprintf("%f", v.Price)
 						n := fmt.Sprintf(FormatFloatToString(v.Price)+" (%+d%%)", v.Price, v.Koeff)
-						btn := tgbotapi.NewInlineKeyboardButtonData(n, SetNotifPrice+"_"+n)
+						btn := tgbotapi.NewInlineKeyboardButtonData(n, SetNotifPrice+"_"+price)
 						row = append(row, btn)
 						// Делим на N строк по 3 элемента
 						if (k+1)%3 == 0 {
@@ -249,17 +290,27 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 			msg = msg_t
 
 		case EnterSum:
-			keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotifPrice), 2)
 
-			// Запись в кеш введенной цены
-			n, _ := strconv.ParseFloat(update.Message.Text, 64)
-			SetNotifCh.SetPrice(int(update.Message.Chat.ID), n)
+			n, err := strconv.ParseFloat(update.Message.Text, 32)
+			if err != nil {
+				ans += fmt.Sprint("Ошибка преобразования цены. Измените цену и повторите заного\n")
 
-			// Считывание из кеша всего объекта
-			setNotif := SetNotifCh.GetObject(int(update.Message.Chat.ID))
+				var row []tgbotapi.InlineKeyboardButton
+				row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", SetNotifCrypto))
+				row = append(row, tgbotapi.NewInlineKeyboardButtonData("Повтор ввода", SetNotifPriceEnter))
+				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
 
-			ans += fmt.Sprintf("Создается отсеживание:\nВалюта - %s\nКритерий - %s\nЦена - %.9f", setNotif.Crypto, setNotif.Criterion, setNotif.Price)
+			} else {
+				keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotifPrice), 2)
+				// Запись в кеш введенной цены
+				SetNotifCh.SetPrice(int(update.Message.Chat.ID), float32(n))
 
+				// Считывание из кеша всего объекта
+				setNotif := SetNotifCh.GetObject(int(update.Message.Chat.ID))
+
+				ans += fmt.Sprintf("Создается отсеживание:\nВалюта - %s\nКритерий - %s\nЦена - %.9f", setNotif.Crypto, setNotif.Criterion, setNotif.Price)
+
+			}
 			msg_t := tgbotapi.NewMessage(update.Message.Chat.ID,
 				ans)
 			msg_t.ReplyMarkup = &keyboard

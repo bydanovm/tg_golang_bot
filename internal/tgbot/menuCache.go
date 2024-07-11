@@ -9,7 +9,7 @@ type SetNotifCacheStruct struct {
 type SetNotifStruct struct {
 	Crypto    string
 	Criterion string
-	Price     float64
+	Price     float32
 }
 
 // Номер пользователя (чата) - структура
@@ -78,7 +78,7 @@ func (uc *SetNotifCacheStruct) SetCriterion(idUsr int, criterion string) {
 	}
 }
 
-func (uc *SetNotifCacheStruct) SetPrice(idUsr int, price float64) {
+func (uc *SetNotifCacheStruct) SetPrice(idUsr int, price float32) {
 	isRLock := uc.URLockU()
 	if _, ok := uc.Item[idUsr]; !ok {
 		isRLock = uc.URUnlock()
@@ -116,7 +116,7 @@ func (uc *SetNotifCacheStruct) GetCriterion(idUsr int) (criterion string) {
 	return criterion
 }
 
-func (uc *SetNotifCacheStruct) GetPrice(idUsr int) (price float64) {
+func (uc *SetNotifCacheStruct) GetPrice(idUsr int) (price float32) {
 	uc.mu.RLock()
 	defer uc.mu.RUnlock()
 	if v, ok := uc.Item[idUsr]; ok {
