@@ -2,13 +2,12 @@ package tgbot
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 	"github.com/mbydanov/tg_golang_bot/internal/coinmarketcup"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
-	"github.com/mbydanov/tg_golang_bot/internal/services"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -29,27 +28,9 @@ func menuGetCrypto(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg interfa
 			ans = ChooseGetCrypto
 
 			// Выбор ТОП-10 криптовалют
-			top10cur, err := database.DCCache.GetTop10Cache()
-			if err != nil {
-				services.Logging.WithFields(logrus.Fields{
-					"userId":   update.CallbackQuery.Message.From.ID,
-					"userName": update.CallbackQuery.Message.From.UserName,
-				}).Error(err)
-			}
-			var row []tgbotapi.InlineKeyboardButton
-			for k, v := range top10cur {
-				btn := tgbotapi.NewInlineKeyboardButtonData(v.CryptoName, GetCrypto+"_"+v.CryptoName)
-				row = append(row, btn)
-				// Делим на N строк по 5 элементов
-				if (k+1)%5 == 0 {
-					keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
-					row = nil
-				}
-			}
-			row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", Start))
-			row = append(row, tgbotapi.NewInlineKeyboardButtonData("Еще", GetCryptoYet))
-			row = append(row, tgbotapi.NewInlineKeyboardButtonData("Ввод", GetCryptoEnter))
-			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+			// top10cur, err := database.DCCache.GetTop10Cache()
+			offset := 10
+			keyboard = GetCryptoListOffset(offset)
 
 			msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
 				update.CallbackQuery.Message.MessageID, ans)
@@ -69,8 +50,9 @@ func menuGetCrypto(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg interfa
 				}
 				msg = msg_t
 
-			case GetCryptoYet:
+			// case GetCryptoYet:
 			// Когда пришла в ответе КВ из кнопки
+
 			default:
 				ans, keyboard = GetCryptoFunc(callBackData[1])
 				msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
@@ -80,7 +62,19 @@ func menuGetCrypto(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg interfa
 			}
 
 		} else if len(callBackData) == 3 && callBackData[0] == GetCrypto {
+			if callBackData[1] == Yet {
+				ans = ChooseGetCrypto
 
+				offset, _ := strconv.Atoi(callBackData[2])
+				keyboard = GetCryptoListOffset(offset)
+
+				msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
+					update.CallbackQuery.Message.MessageID, ans)
+				msg_t.ReplyMarkup = &keyboard
+
+				msg = msg_t
+
+			}
 		}
 	} else if update.Message.ReplyToMessage != nil {
 
@@ -127,4 +121,37 @@ func GetCryptoFunc(crypto string) (ans string, keyboard tgbotapi.InlineKeyboardM
 	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
 
 	return ans, keyboard
+}
+func GetCryptoListOffset(offset int) (keyboard tgbotapi.InlineKeyboardMarkup) {
+	listCryptoCur, lastList, _ := database.DCCache.GetCryptoOffset(offset)
+	// if err != nil {
+	// 	services.Logging.WithFields(logrus.Fields{
+	// 		"userId":   update.CallbackQuery.Message.From.ID,
+	// 		"userName": update.CallbackQuery.Message.From.UserName,
+	// 	}).Error(err)
+	// }
+	var row []tgbotapi.InlineKeyboardButton
+	for k, v := range listCryptoCur {
+		btn := tgbotapi.NewInlineKeyboardButtonData(v.CryptoName, GetCrypto+"_"+v.CryptoName)
+		row = append(row, btn)
+		// Делим на N строк по 5 элементов
+		if (k+1)%5 == 0 {
+			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+			row = nil
+		}
+	}
+
+	if offset > 10 {
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", GetCryptoYet+`_`+strconv.Itoa(offset-10)))
+	} else {
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", Start))
+	}
+
+	if !lastList {
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData("Ещё", GetCryptoYet+`_`+strconv.Itoa(offset+10)))
+	}
+	row = append(row, tgbotapi.NewInlineKeyboardButtonData("Ввод", GetCryptoEnter))
+	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+
+	return keyboard
 }

@@ -222,6 +222,7 @@ type DictCryptoCacheKeys map[string]int // Словарь symbol - Id
 
 var DCCache = make(DictCryptoCache)
 var DCCacheKeys = make(DictCryptoCacheKeys)
+var DCCacheKeysSeq = make([]int, 0, 100)
 
 func (dcc *DictCryptoCache) CheckAllCache() error {
 	d := *dcc
@@ -243,6 +244,7 @@ func (dcc *DictCryptoCache) CheckAllCache() error {
 			mapstructure.Decode(subRs, &subFields)
 			d[subFields.CryptoId] = subFields
 			DCCacheKeys[subFields.CryptoName] = subFields.CryptoId
+			DCCacheKeysSeq = append(DCCacheKeysSeq, subFields.CryptoId)
 		}
 	}
 	return nil
@@ -298,6 +300,30 @@ func (dcc *DictCryptoCache) GetTop10Cache() (DCout []DictCrypto, err error) {
 	} else {
 		return []DictCrypto{}, fmt.Errorf("GetCache:Crypto not initialised")
 	}
+}
+
+// Получить список КВ со смещением
+func (dcc *DictCryptoCache) GetCryptoOffset(offset int) (DCout []DictCrypto, last bool, err error) {
+	d := *dcc
+	if offset < 10 {
+		return DCout, false, fmt.Errorf("GetCryptoOffset:Offset is small")
+	} else if offset > len(d) {
+		offset -= (offset - len(d))
+		last = true
+	}
+	if len(d) > 1 {
+		for i := offset - 10; i < offset; i++ {
+			DC, err := d.GetCache(DCCacheKeysSeq[i])
+			if err != nil {
+				return DCout, false, fmt.Errorf("GetCryptoOffset:" + err.Error())
+			}
+			DCout = append(DCout, DC)
+		}
+	} else {
+		return DCout, false, fmt.Errorf("GetCryptoOffset:Len cache is zero")
+	}
+
+	return DCout, last, err
 }
 
 // Поиск ИД криптовалюты по Имени в словаре
