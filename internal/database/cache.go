@@ -18,7 +18,7 @@ type RWMutexUsr struct {
 }
 
 type UserCache struct {
-	RWMutexUsr
+	mu   RWMutexUsr
 	Item UsersCacheType
 }
 
@@ -38,29 +38,30 @@ func Init() *UserCache {
 }
 
 func (uc *UserCache) CheckCache(idUsr int) (err error) {
-	uc.RLock()
+	uc.mu.RLock()
+	isLock := true
 	if _, ok := uc.Item[idUsr]; !ok {
-		uc.RUnlock()
+		uc.mu.RUnlock()
+		isLock = false
 		// Заполняем информацию в кеш из БД
 		user := Users{IdUsr: idUsr}
 		if err = user.CheckUser(); err != nil {
 			err = fmt.Errorf("CheckCache:" + err.Error())
 		} else {
-			uc.Lock()
+			uc.mu.Lock()
 			uc.Item[idUsr] = user
-			uc.Unlock()
+			uc.mu.Unlock()
 		}
 	}
-	isLock := uc.TryRLock()
 	if isLock {
-		uc.RUnlock()
+		uc.mu.RUnlock()
 	}
 	return err
 }
 
 func (uc *UserCache) GetCache(idUsr int) (Users, error) {
-	uc.RLock()
-	defer uc.RUnlock()
+	uc.mu.RLock()
+	defer uc.mu.RUnlock()
 	if v, ok := uc.Item[idUsr]; !ok {
 		return Users{}, fmt.Errorf("GetCache:User not initialised")
 	} else {
@@ -69,8 +70,8 @@ func (uc *UserCache) GetCache(idUsr int) (Users, error) {
 }
 
 func (uc *UserCache) GetCount() (cnt int) {
-	uc.RLock()
-	defer uc.RUnlock()
+	uc.mu.RLock()
+	defer uc.mu.RUnlock()
 	cnt = len(uc.Item)
 	return cnt
 }
@@ -175,7 +176,8 @@ func (ttc *TrackingCryptoCache) CheckAllCache() error {
 	if _, ok := t[1]; !ok {
 		// Заполняем информацию в кеш из БД
 		expLst := []Expressions{
-			{Key: "OnTrkCrp", Operator: EQ, Value: "true"},
+			// {Key: "OnTrkCrp", Operator: EQ, Value: "true"},
+			{Key: "IdTrkCrp", Operator: NotEQ, Value: "0"},
 		}
 		rs, find, _, err := ReadDataRow(&TrackingCrypto{}, expLst, 0)
 		if err != nil {
@@ -206,14 +208,9 @@ func (ttc *TrackingCryptoCache) GetCache(id int) (TrackingCrypto, error) {
 func (ttc *TrackingCryptoCache) GetCacheLastId() int {
 	t := *ttc
 	var maxId int
-	if _, ok := t[1]; ok {
-		for maxId = range t {
-			break
-		}
-		for n := range t {
-			if n > maxId {
-				maxId = n
-			}
+	for k, _ := range t {
+		if k > maxId {
+			maxId = k
 		}
 	}
 	return maxId + 1
@@ -225,6 +222,7 @@ type DictCryptoCacheKeys map[string]int // Словарь symbol - Id
 
 var DCCache = make(DictCryptoCache)
 var DCCacheKeys = make(DictCryptoCacheKeys)
+var DCCacheKeysSeq = make([]int, 0, 100)
 
 func (dcc *DictCryptoCache) CheckAllCache() error {
 	d := *dcc
@@ -246,6 +244,7 @@ func (dcc *DictCryptoCache) CheckAllCache() error {
 			mapstructure.Decode(subRs, &subFields)
 			d[subFields.CryptoId] = subFields
 			DCCacheKeys[subFields.CryptoName] = subFields.CryptoId
+			DCCacheKeysSeq = append(DCCacheKeysSeq, subFields.CryptoId)
 		}
 	}
 	return nil
@@ -301,6 +300,30 @@ func (dcc *DictCryptoCache) GetTop10Cache() (DCout []DictCrypto, err error) {
 	} else {
 		return []DictCrypto{}, fmt.Errorf("GetCache:Crypto not initialised")
 	}
+}
+
+// Получить список КВ со смещением
+func (dcc *DictCryptoCache) GetCryptoOffset(offset int) (DCout []DictCrypto, last bool, err error) {
+	d := *dcc
+	if offset < 10 {
+		return DCout, false, fmt.Errorf("GetCryptoOffset:Offset is small")
+	} else if offset > len(d) {
+		offset -= (offset - len(d))
+		last = true
+	}
+	if len(d) > 1 {
+		for i := offset - 10; i < offset; i++ {
+			DC, err := d.GetCache(DCCacheKeysSeq[i])
+			if err != nil {
+				return DCout, false, fmt.Errorf("GetCryptoOffset:" + err.Error())
+			}
+			DCout = append(DCout, DC)
+		}
+	} else {
+		return DCout, false, fmt.Errorf("GetCryptoOffset:Len cache is zero")
+	}
+
+	return DCout, last, err
 }
 
 // Поиск ИД криптовалюты по Имени в словаре

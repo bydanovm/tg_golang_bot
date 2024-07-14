@@ -170,6 +170,71 @@ func GetLatest(cryptocurrencies string) (answer []string) {
 	return s
 }
 
+func GetLatestStruct(cryptocurrencies string) (cryptos []GetLatestObject, err error) {
+	// Обрабатываем входную строку, преобразовываем в массив
+	cryptoCur := strings.FieldsFunc(cryptocurrencies, func(r rune) bool {
+		return r == ',' || r == ' '
+	})
+	for i := 0; i < len(cryptoCur); i++ {
+		cryptoCur[i] = strings.ToUpper(strings.Trim(cryptoCur[i], ` !&.,@#$%^*()-_=+/\?<>{}АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя`))
+	}
+	// Проверка на пустой массив, если пустой, то удаляем
+	cryptoCur = models.ChkArrayBySpace(cryptoCur)
+	expLst := []database.Expressions{
+		{Key: database.CryptoName, Operator: "IN", Value: "('" + strings.Join(cryptoCur, "','") + "')"},
+	}
+
+	rs, find, countFind, err := database.ReadDataRow(&database.DictCrypto{}, expLst, len(cryptoCur))
+	if err != nil {
+		err = fmt.Errorf("GetLatestStruct:" + err.Error())
+	}
+	// Если запись найдена, возвращаем из БД
+	if find {
+		for _, subRs := range rs {
+			subFields := database.DictCrypto{}
+			mapstructure.Decode(subRs, &subFields)
+			cryptos = append(cryptos, GetLatestObject{Crypto: subFields, Find: true})
+
+			// Увеличиваем счетчик запроса КВ
+			dictCryptos := map[string]string{
+				"CryptoCounter": fmt.Sprintf("%v", subFields.CryptoCounter+1),
+			}
+			expLst := []database.Expressions{
+				{Key: database.CryptoId, Operator: database.EQ, Value: `'` + fmt.Sprintf("%v", subFields.CryptoId) + `'`},
+			}
+			if err = database.UpdateData("dictcrypto", dictCryptos, expLst); err != nil {
+				err = fmt.Errorf("GetLatestStruct:" + err.Error())
+			} else {
+				d := database.DCCache[subFields.CryptoId].(database.DictCrypto)
+				d.CryptoCounter = subFields.CryptoCounter + 1
+				database.DCCache[subFields.CryptoId] = d
+			}
+		}
+	}
+	// Если нашли все валюты, то возвращаем их
+	if countFind != len(cryptoCur) {
+		// Если не все найдены, то определяем какие валюты мы не нашли
+		for _, v1 := range cryptoCur {
+			lenCrypto := len(cryptos)
+			if lenCrypto == 0 {
+				cryptos = append(cryptos, GetLatestObject{Crypto: database.DictCrypto{CryptoName: v1}, Find: false})
+				break
+			}
+			for i2 := 0; i2 < lenCrypto; i2++ {
+				// for i2, v2 := range findCryptoCur {
+				if v1 == cryptos[i2].Crypto.CryptoName {
+					break
+				}
+				if v1 != cryptos[i2].Crypto.CryptoName && i2 == len(cryptos)-1 {
+					cryptos = append(cryptos, GetLatestObject{Crypto: database.DictCrypto{CryptoName: v1}, Find: false})
+				}
+			}
+		}
+	}
+
+	return cryptos, err
+}
+
 func (qla *QuotesLatestAnswer) UnmarshalJSON(bs []byte) error {
 	var quotesLatest QuotesLatest
 	if err := json.Unmarshal(bs, &quotesLatest); err != nil {

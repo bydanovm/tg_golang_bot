@@ -1,6 +1,10 @@
 package coinmarketcup
 
-import "time"
+import (
+	"time"
+
+	"github.com/mbydanov/tg_golang_bot/internal/database"
+)
 
 type QuotesLatest struct {
 	Status status
@@ -64,4 +68,8 @@ type QuotesLatestAnswerResult struct {
 	Price        float32
 	Currency     string
 	Last_updated time.Time
+}
+type GetLatestObject struct {
+	Crypto database.DictCrypto
+	Find   bool
 }
