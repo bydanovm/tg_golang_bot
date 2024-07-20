@@ -25,7 +25,7 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 		services.Logging.Panic(err.Error())
 	}
 
-	keyboardBot := initMenu()
+	// keyboardBot := initMenu()
 	// Инициализация меню
 
 	// Устанавливаем время обновления

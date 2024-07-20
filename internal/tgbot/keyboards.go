@@ -13,6 +13,11 @@ const (
 	GetCryptoEnter        string = GetCrypto + "_" + Enter
 	GetCryptoYet          string = GetCrypto + "_" + Yet
 	GetCryptoCurr         string = GetCrypto + "_" + Curr
+	GetNotif              string = "GetNotif"            // Получить свои оповещения
+	GetNotifUp            string = GetNotif + "_" + Up   // Свои оповещения - Назад
+	GetNotifBack          string = GetNotif + "_" + Back // Свои оповещения - Назад
+	GetNotifYet           string = GetNotif + "_" + Yet  // Свои оповещения - Вперед
+	GetNotifCrypto        string = GetNotif + "_" + Crypto
 	SetNotif              string = "SetNotif"                // Установить уведомления по изменению цены криптовалюты
 	SetNotifCrypto        string = SetNotif + "_" + Crypto   // Выбор или ввод КВ
 	SetNotifCryptoEnter   string = SetNotifCrypto + "_Enter" // Ввод своей КВ
@@ -29,11 +34,20 @@ const (
 	Price  string = "Price"
 	Enter  string = "Enter"
 	Yet    string = "Yet"
+	Back   string = "Back"
 	Curr   string = "Curr"
+	Up     string = "Up"
 )
 
 type tgBotMenu struct {
 	buttons *models.TreeNode
+}
+
+var keyboardBot = initMenu()
+
+type buttonInfo struct {
+	text string
+	data string
 }
 
 func initMenu() *tgBotMenu {
@@ -44,13 +58,17 @@ func initMenu() *tgBotMenu {
 	// buttons.Add(SetNotifCrypto, "Установить отслеживание", GetCryptoCurr, true)
 	buttons.Add(SetNotif, "Оповещения", "0", true)
 	buttons.Add(Start, "Назад", SetNotif, true)
-	buttons.Add(SetNotifCrypto, "Выбрать крипту", SetNotif, true)
-	buttons.Add(SetNotifCriterion, "Установить критерий", SetNotif, false)
+	buttons.Add(GetNotif, "Текущие", SetNotif, true)
+	buttons.Add(SetNotifCrypto, "Новое", SetNotif, true)
+	// buttons.Add(SetNotifCriterion, "Установить критерий", SetNotif, false)
 	buttons.Add(SetNotifPrice, "Установить цену", SetNotif, false)
+	buttons.Add(GetNotifBack, "Назад", GetNotif, true)
+	buttons.Add(GetNotifUp, "Оповещения", GetNotif, true)
+	buttons.Add(GetNotifYet, "Вперед", GetNotif, true)
 	buttons.Add(SetNotifPriceYes, "Да", SetNotifPrice, true)
 	buttons.Add(SetNotifPriceNo, "Нет", SetNotifPrice, true)
-	buttons.Add(SetNotifCriterionMore, "Больше >=", SetNotifCriterion, true)
-	buttons.Add(SetNotifCriterionLess, "Меньше <=", SetNotifCriterion, true)
+	// buttons.Add(SetNotifCriterionMore, "Больше >=", SetNotifCriterion, true)
+	// buttons.Add(SetNotifCriterionLess, "Меньше <=", SetNotifCriterion, true)
 	buttons.Add(Help, "Справка", "0", true)
 
 	menu := &tgBotMenu{
@@ -103,7 +121,20 @@ func MenuToInlineKeyboard(buttons []tgbotapi.InlineKeyboardButton, columns int) 
 }
 
 // Сделать кнопки для InlineKeyboard
-func ConvertToButtonInlineKeyboard(in interface{}) (buttons []tgbotapi.InlineKeyboardButton) {
+func ConvertToButtonInlineKeyboard(in []buttonInfo, node string, column int) (keyboard tgbotapi.InlineKeyboardMarkup) {
 
-	return buttons
+	var row []tgbotapi.InlineKeyboardButton
+	for k, v := range in {
+		btn := tgbotapi.NewInlineKeyboardButtonData(v.text, v.data)
+		row = append(row, btn)
+		// Делим на N строк по column элементов
+		if (k+1)%column == 0 {
+			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+			row = nil
+		}
+	}
+	nodeButtons := keyboardBot.GetMainMenuInlineMarkupFromNode(node)
+	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, nodeButtons)
+
+	return keyboard
 }

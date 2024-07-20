@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -166,9 +167,11 @@ func (ttc *TypeTrackingCryptoCacheKeys) GetCacheIdByName(name string) int {
 	return 0
 }
 
-// Кеш активных отслеживаний
+// Кеш всех отслеживаний
 type TrackingCryptoCache map[int]TrackingCrypto
 
+// Отслеживания сопоставимые каждому пользователю
+var TTCKeys = make(map[int][]int)
 var TCCache = make(TrackingCryptoCache)
 
 func (ttc *TrackingCryptoCache) CheckAllCache() error {
@@ -191,6 +194,7 @@ func (ttc *TrackingCryptoCache) CheckAllCache() error {
 		for _, subRs := range rs {
 			mapstructure.Decode(subRs, &subFields)
 			t[subFields.IdTrkCrp] = subFields
+			TTCKeys[subFields.UserId] = append(TTCKeys[subFields.UserId], subFields.IdTrkCrp)
 		}
 	}
 	return nil
@@ -214,6 +218,24 @@ func (ttc *TrackingCryptoCache) GetCacheLastId() int {
 		}
 	}
 	return maxId + 1
+}
+
+// Возврат пользовательских отслеживаний из кеша, отсортированных по убыванию
+func (ttc *TrackingCryptoCache) GetTrackingForUser(idUsr int) (trackings []TrackingCrypto, err error) {
+	if _, ok := TTCKeys[idUsr]; ok {
+		sort.Slice(TTCKeys[idUsr], func(i, j int) bool {
+			return TTCKeys[idUsr][i] > TTCKeys[idUsr][j]
+		})
+		for _, v := range TTCKeys[idUsr] {
+			tracking, err := ttc.GetCache(v)
+			if err != nil {
+				return trackings, fmt.Errorf("GetTrackingForUser:" + err.Error())
+			} else {
+				trackings = append(trackings, tracking)
+			}
+		}
+	}
+	return trackings, err
 }
 
 // Кеш словаря критовалют
