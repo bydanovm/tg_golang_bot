@@ -46,11 +46,25 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 		// Разберем data callback по структуре command_subcmd_addcmd
 		callBackData := strings.Split(update.CallbackQuery.Data, "_")
 		// Главное меню оповещений
-		if len(callBackData) == 1 && callBackData[0] == SetNotif {
-			keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotif), 2)
-			// Текст взять из базы (нужен справочник)
-			ans = "Здесь можно завести оповещения\n"
+		if len(callBackData) == 1 {
+			switch callBackData[0] {
+			case SetNotif:
+				keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotif), 2)
+				// Текст взять из базы (нужен справочник)
+				ans = "Здесь можно завести оповещения\n"
 
+			case GetNotif:
+				ans = "Текущие оповещения\n"
+				// Вывести от новых к старым в формате Валюта - Значение
+				trackings, _ := database.TCCache.GetTrackingForUser(update.CallbackQuery.From.ID)
+				// Создание списка кнопок
+				listButtons := make([]buttonInfo, 0, 10)
+				for _, v := range trackings {
+					infoCurrency, _ := database.DCCache.GetCache(v.DctCrpId)
+					listButtons = append(listButtons, buttonInfo{infoCurrency.CryptoName + "-" + fmt.Sprintf(FormatFloatToString(v.ValTrkCrp), v.ValTrkCrp), GetNotif + "_" + fmt.Sprintf("%d", v.IdTrkCrp)})
+				}
+				keyboard = ConvertToButtonInlineKeyboard(listButtons, GetNotif, 3)
+			}
 			msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
 				update.CallbackQuery.Message.MessageID, ans)
 
@@ -188,14 +202,62 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 				if callBackData[1] == Crypto {
 					// Сохранить КВ в мапу
 					// Переход к выбору критерия
-					keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotifCriterion), 2)
-					// Запись в кеш выбранной КВ
+					// keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(SetNotifCriterion), 2)
+					// // Запись в кеш выбранной КВ
+					// SetNotifCh.SetCrypto(int(update.CallbackQuery.Message.Chat.ID), callBackData[2])
+
+					ans = "Выбрана криптовалюта: " + callBackData[2] + "\n"
+					// msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
+					// 	update.CallbackQuery.Message.MessageID, ans)
+					// msg_t.ReplyMarkup = &keyboard
+					// msg = msg_t
+
 					SetNotifCh.SetCrypto(int(update.CallbackQuery.Message.Chat.ID), callBackData[2])
 
-					ans += "Выбрана криптовалюта: " + callBackData[2] + "\nВыберите критерий"
+					ans += ChooseSum
+
+					crypto := SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID))
+					cryptos, _ := coinmarketcup.GetLatestStruct(crypto)
+					isFind := false
+					prices := []PriceInfo{}
+
+					if len(cryptos) == 1 {
+						if cryptos[0].Find {
+							isFind = true
+							// Нужно вычислять количество знаков динамически
+							prices = append(prices, PriceInfo{1, cryptos[0].Crypto.CryptoLastPrice * 1.01})
+							prices = append(prices, PriceInfo{5, cryptos[0].Crypto.CryptoLastPrice * 1.05})
+							prices = append(prices, PriceInfo{10, cryptos[0].Crypto.CryptoLastPrice * 1.1})
+							prices = append(prices, PriceInfo{-1, cryptos[0].Crypto.CryptoLastPrice * 0.99})
+							prices = append(prices, PriceInfo{-5, cryptos[0].Crypto.CryptoLastPrice * 0.95})
+							prices = append(prices, PriceInfo{-10, cryptos[0].Crypto.CryptoLastPrice * 0.9})
+						} else {
+							ans += fmt.Sprintf("%s %s", cryptos[0].Crypto.CryptoName, "не найдена в базе")
+						}
+					}
+
+					var row []tgbotapi.InlineKeyboardButton
+					if isFind {
+						for k, v := range prices {
+							price := fmt.Sprintf("%f", v.Price)
+							n := fmt.Sprintf(FormatFloatToString(v.Price)+" (%+d%%)", v.Price, v.Koeff)
+							btn := tgbotapi.NewInlineKeyboardButtonData(n, SetNotifPrice+"_"+price)
+							row = append(row, btn)
+							// Делим на N строк по 3 элемента
+							if (k+1)%3 == 0 {
+								keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+								row = nil
+							}
+						}
+					}
+					row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", SetNotifCrypto))
+					row = append(row, tgbotapi.NewInlineKeyboardButtonData("Ввод", SetNotifPriceEnter))
+					keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+
 					msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
 						update.CallbackQuery.Message.MessageID, ans)
 					msg_t.ReplyMarkup = &keyboard
+
 					msg = msg_t
 
 				} else if callBackData[1] == Price {
@@ -219,51 +281,51 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 
 			// Для выбора критериев переход к выбору или вводу суммы
 			if update.CallbackQuery.Data == SetNotifCriterionMore || update.CallbackQuery.Data == SetNotifCriterionLess {
-				ans := ChooseSum
+				// ans := ChooseSum
 
-				crypto := SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID))
-				cryptos, _ := coinmarketcup.GetLatestStruct(crypto)
-				isFind := false
-				prices := []PriceInfo{}
+				// crypto := SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID))
+				// cryptos, _ := coinmarketcup.GetLatestStruct(crypto)
+				// isFind := false
+				// prices := []PriceInfo{}
 
-				if len(cryptos) == 1 {
-					if cryptos[0].Find {
-						isFind = true
-						// Нужно вычислять количество знаков динамически
-						prices = append(prices, PriceInfo{1, cryptos[0].Crypto.CryptoLastPrice * 1.01})
-						prices = append(prices, PriceInfo{5, cryptos[0].Crypto.CryptoLastPrice * 1.05})
-						prices = append(prices, PriceInfo{10, cryptos[0].Crypto.CryptoLastPrice * 1.1})
-						prices = append(prices, PriceInfo{-1, cryptos[0].Crypto.CryptoLastPrice * 0.99})
-						prices = append(prices, PriceInfo{-5, cryptos[0].Crypto.CryptoLastPrice * 0.95})
-						prices = append(prices, PriceInfo{-10, cryptos[0].Crypto.CryptoLastPrice * 0.9})
-					} else {
-						ans += fmt.Sprintf("%s %s", cryptos[0].Crypto.CryptoName, "не найдена в базе")
-					}
-				}
+				// if len(cryptos) == 1 {
+				// 	if cryptos[0].Find {
+				// 		isFind = true
+				// 		// Нужно вычислять количество знаков динамически
+				// 		prices = append(prices, PriceInfo{1, cryptos[0].Crypto.CryptoLastPrice * 1.01})
+				// 		prices = append(prices, PriceInfo{5, cryptos[0].Crypto.CryptoLastPrice * 1.05})
+				// 		prices = append(prices, PriceInfo{10, cryptos[0].Crypto.CryptoLastPrice * 1.1})
+				// 		prices = append(prices, PriceInfo{-1, cryptos[0].Crypto.CryptoLastPrice * 0.99})
+				// 		prices = append(prices, PriceInfo{-5, cryptos[0].Crypto.CryptoLastPrice * 0.95})
+				// 		prices = append(prices, PriceInfo{-10, cryptos[0].Crypto.CryptoLastPrice * 0.9})
+				// 	} else {
+				// 		ans += fmt.Sprintf("%s %s", cryptos[0].Crypto.CryptoName, "не найдена в базе")
+				// 	}
+				// }
 
-				var row []tgbotapi.InlineKeyboardButton
-				if isFind {
-					for k, v := range prices {
-						price := fmt.Sprintf("%f", v.Price)
-						n := fmt.Sprintf(FormatFloatToString(v.Price)+" (%+d%%)", v.Price, v.Koeff)
-						btn := tgbotapi.NewInlineKeyboardButtonData(n, SetNotifPrice+"_"+price)
-						row = append(row, btn)
-						// Делим на N строк по 3 элемента
-						if (k+1)%3 == 0 {
-							keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
-							row = nil
-						}
-					}
-				}
-				row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", Start))
-				row = append(row, tgbotapi.NewInlineKeyboardButtonData("Ввод", SetNotifPriceEnter))
-				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+				// var row []tgbotapi.InlineKeyboardButton
+				// if isFind {
+				// 	for k, v := range prices {
+				// 		price := fmt.Sprintf("%f", v.Price)
+				// 		n := fmt.Sprintf(FormatFloatToString(v.Price)+" (%+d%%)", v.Price, v.Koeff)
+				// 		btn := tgbotapi.NewInlineKeyboardButtonData(n, SetNotifPrice+"_"+price)
+				// 		row = append(row, btn)
+				// 		// Делим на N строк по 3 элемента
+				// 		if (k+1)%3 == 0 {
+				// 			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+				// 			row = nil
+				// 		}
+				// 	}
+				// }
+				// row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", Start))
+				// row = append(row, tgbotapi.NewInlineKeyboardButtonData("Ввод", SetNotifPriceEnter))
+				// keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
 
-				msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
-					update.CallbackQuery.Message.MessageID, ans)
-				msg_t.ReplyMarkup = &keyboard
+				// msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
+				// 	update.CallbackQuery.Message.MessageID, ans)
+				// msg_t.ReplyMarkup = &keyboard
 
-				msg = msg_t
+				// msg = msg_t
 
 			} else if update.CallbackQuery.Data == SetNotifPriceYes || update.CallbackQuery.Data == SetNotifPriceNo {
 				ans += "Здесь можно завести оповещения"
