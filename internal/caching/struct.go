@@ -8,7 +8,7 @@ import (
 )
 
 type item[T iCacheble] struct {
-	value      T
+	value      []T
 	created    time.Time
 	expiration int64
 }
@@ -46,7 +46,8 @@ func (uc *Cache[T]) URUnlock() (isRLock bool) {
 	return isRLock
 }
 
-func (uc *Cache[T]) Get(k int) (res T, ok bool) {
+// Получение существующей записи
+func (uc *Cache[T]) Get(k int) (res []T, ok bool) {
 	uc.mu.RLock()
 	defer uc.mu.RUnlock()
 	v, ok := uc.items[k]
@@ -63,6 +64,24 @@ func (uc *Cache[T]) Get(k int) (res T, ok bool) {
 	return res, ok
 }
 
+func (uc *Cache[T]) GetByIdx(k int, idx int) (res T, ok bool) {
+	uc.mu.RLock()
+	defer uc.mu.RUnlock()
+	v, ok := uc.items[k]
+
+	if ok {
+		// Не бессрочный И Время жизни не вышло ИЛИ Бессрочный
+		if v.expiration > 0 && time.Now().UnixNano() < v.expiration || v.expiration == 0 {
+			res = v.value[idx]
+		} else {
+			ok = false
+		}
+	}
+
+	return res, ok
+}
+
+// Добавление новой записи + перезапись существующей
 func (uc *Cache[T]) Set(k int, val T, duration time.Duration) {
 	var expr int64
 
@@ -78,17 +97,61 @@ func (uc *Cache[T]) Set(k int, val T, duration time.Duration) {
 	defer uc.mu.Unlock()
 
 	uc.items[k] = item[T]{
-		value:      val,
+		value:      []T{val},
 		expiration: expr,
 		created:    time.Now(),
 	}
 }
 
+// Добавление записи в мапу к существующей
+func (uc *Cache[T]) Add(k int, val T) {
+	uc.mu.RLock()
+	item, ok := uc.items[k]
+	uc.mu.RUnlock()
+	if ok {
+		uc.mu.Lock()
+		defer uc.mu.Unlock()
+		item.value = append(item.value, val)
+		uc.items[k] = item
+	}
+}
+
+// Удаление всей записи
 func (uc *Cache[T]) Delete(k int) {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 	if _, ok := uc.items[k]; ok {
 		delete(uc.items, k)
+	}
+}
+
+// Удаление последней записи из слайса в мапе
+func (uc *Cache[T]) Pop(k int) {
+	uc.mu.RLock()
+	item, ok := uc.items[k]
+	uc.mu.RUnlock()
+	if ok {
+		if len(item.value) > 0 {
+			uc.mu.Lock()
+			defer uc.mu.Unlock()
+			item.value = item.value[:len(item.value)-1]
+			uc.items[k] = item
+		}
+	}
+}
+
+// Удаление конкретного элемента из слайса в мапе
+func (uc *Cache[T]) DropByIdx(k int, idx int) {
+	uc.mu.RLock()
+	item, ok := uc.items[k]
+	uc.mu.RUnlock()
+	if ok {
+		if len(item.value) > 0 && len(item.value) > idx {
+			uc.mu.Lock()
+			defer uc.mu.Unlock()
+			item.value = append(item.value[:idx], item.value[idx+1:]...)
+			uc.items[k] = item
+		}
 	}
 }
 
