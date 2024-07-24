@@ -39,7 +39,12 @@ type StructInfo struct {
 }
 
 func (s *StructInfo) GetFieldInfo(in interface{}) error {
-	val := reflect.ValueOf(in).Elem()
+	var val reflect.Value
+	if reflect.TypeOf(in).Kind() == reflect.Struct {
+		val = reflect.ValueOf(in)
+	} else {
+		val = reflect.ValueOf(in).Elem()
+	}
 	fieldInfoMap := make(map[string]fieldInfo)
 	structType := val.Type()
 

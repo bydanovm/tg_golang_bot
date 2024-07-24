@@ -262,7 +262,7 @@ func (l *Limits) GetLimit(nameLmt string, usrId int) error {
 			mapstructure.Decode(subRs, &l)
 		}
 	} else {
-		return fmt.Errorf("GetLimit:Limit %s for user %s id:%v not found", lmtDct.NameLmtDct, UsersCache.GetUserName(usrId), usrId)
+		return fmt.Errorf("GetLimit:Limit %s for user %s id:%v not found", lmtDct.NameLmtDct, "username", usrId)
 	}
 
 	return nil
