@@ -2,6 +2,7 @@ package caching
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/mbydanov/tg_golang_bot/internal/database"
@@ -35,11 +36,17 @@ func CheckCacheAndWrite[T iCacheble](k int, object T, link iCacher[T]) (retObjec
 	}
 
 	// Проверка наличия в БД
-
-	// Запись в БД и возврат ответного тела
-	result, err := database.WriteRecord[T](buffer)
+	result, err := database.CheckRecord[T](buffer)
 	if err != nil {
-		return nil, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+		if strings.Contains(err.Error(), "NoRows") {
+			// Запись в БД и возврат ответного тела
+			result, err = database.WriteRecord[T](buffer)
+			if err != nil {
+				return nil, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+			}
+		} else {
+			return nil, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+		}
 	}
 
 	// Десереализация для записи в кеш

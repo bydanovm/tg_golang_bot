@@ -86,7 +86,7 @@ type Groups struct {
 	LvlSecId int    `sql_type:"INTEGER REFERENCES LevelsSecure (idLvlSec)"`
 }
 type Users struct {
-	IdUsr     int       `sql_type:"SERIAL PRIMARY KEY"`
+	IdUsr     int       `sql_type:"SERIAL PRIMARY KEY" pkey:"YES"`
 	TsUsr     time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 	NameUsr   string    `sql_type:"TEXT NOT NULL"`
 	FirstName string    `sql_type:"TEXT NOT NULL"`
@@ -214,13 +214,13 @@ type LimitsDict struct {
 	StdValLmt  int    `sql_type:"INTEGER DEFAULT 0"`
 }
 type Limits struct {
-	IdLmt       int       `sql_type:"SERIAL PRIMARY KEY"`
+	IdLmt       int       `sql_type:"SERIAL PRIMARY KEY" pkey:"YES"`
 	ValAvailLmt int       `sql_type:"INTEGER DEFAULT 0"`
 	ValUsedLmt  int       `sql_type:"INTEGER DEFAULT 0"`
 	ActiveLmt   bool      `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
 	TsLmtOn     time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 	TsLmtOff    time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
-	UserId      int       `sql_type:"INTEGER REFERENCES Users (idUsr)"`
+	UserId      int       `sql_type:"INTEGER REFERENCES Users (idUsr)" fkey:"YES"`
 	LtmDctId    int       `sql_type:"INTEGER REFERENCES LimitsDict (idLmtDct)"`
 }
 
@@ -355,13 +355,13 @@ func (t *TypeTrackingCrypto) GetTypeInfo() (interface{}, error) {
 }
 
 type TrackingCrypto struct {
-	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY"`
+	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY" pkey:"YES"`
 	ValTrkCrp   float32 `sql_type:"NUMERIC(19,9)"`
 	OnTrkCrp    bool    `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
 	LmtId       int     `sql_type:"INTEGER REFERENCES Limits (lmtid)"`
 	TypTrkCrpId int     `sql_type:"INTEGER REFERENCES TypeTrackingCrypto (idTypTrkCrp)"`
 	DctCrpId    int     `sql_type:"INTEGER REFERENCES DictCrypto (CryptoId)"`
-	UserId      int     `sql_type:"INTEGER REFERENCES Users (idUsr)"`
+	UserId      int     `sql_type:"INTEGER REFERENCES Users (idUsr)"  fkey:"YES"`
 }
 
 func (t *TrackingCrypto) GetTypeInfo() (interface{}, error) {

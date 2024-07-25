@@ -30,6 +30,8 @@ type fieldInfo struct {
 	StructNameFields string
 	StructTypes      reflect.Kind
 	StructSQLTypes   string
+	StructTagIsPKey  string
+	StructTagIsFKey  string
 	StructValue      interface{}
 }
 type StructInfo struct {
@@ -55,7 +57,13 @@ func (s *StructInfo) GetFieldInfo(in interface{}) error {
 		field := structType.Field(i)
 		structValue := reflect.ValueOf(val.Field(i).Interface()).Interface()
 		tag := field.Tag
-		fieldInfoMap[field.Name] = fieldInfo{field.Name, field.Type.Kind(), tag.Get("sql_type"), structValue}
+		fieldInfoMap[field.Name] = fieldInfo{
+			StructNameFields: field.Name,
+			StructTypes:      field.Type.Kind(),
+			StructSQLTypes:   tag.Get("sql_type"),
+			StructTagIsPKey:  tag.Get("pkey"),
+			StructTagIsFKey:  tag.Get("fkey"),
+			StructValue:      structValue}
 	}
 	s.StructFieldInfo = fieldInfoMap
 	return nil
@@ -78,4 +86,18 @@ func (s *StructInfo) UnionFieldsSQL() (map[string]string, error) {
 	fieldInfoMap["Values"] = strings.Join(val, "','")
 
 	return fieldInfoMap, nil
+}
+
+// Получить поле с PK для проверки в БД
+func (s *StructInfo) GetPrimaryKey() (field fieldInfo, err error) {
+	for _, v := range s.StructFieldInfo {
+		if v.StructTagIsPKey == "YES" {
+			field = v
+		}
+	}
+	if field.StructNameFields == "" {
+		err = fmt.Errorf("GetPrimaryKey:PK is not found")
+	}
+
+	return field, err
 }
