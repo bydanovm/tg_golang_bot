@@ -274,7 +274,13 @@ func ReadDataRow(fields interface{}, expression []Expressions, countIter int) ([
 
 // Функция определения колонок (указателей) в структуре при передаче как интерфейс
 func getFields(in interface{}) (out []interface{}) {
-	val := reflect.ValueOf(in).Elem()
+	var val reflect.Value
+	if reflect.TypeOf(in).Kind() == reflect.Struct {
+		val = reflect.ValueOf(in)
+	} else {
+		val = reflect.ValueOf(in).Elem()
+	}
+	// val := reflect.ValueOf(in).Elem()
 	// Проверка на поинтер
 	if val.Kind() == reflect.Ptr {
 		val = reflect.Indirect(val)

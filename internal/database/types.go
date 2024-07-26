@@ -42,7 +42,7 @@ type LogMsg struct {
 type DictCrypto struct {
 	Id              int       `sql_type:"SERIAL PRIMARY KEY"`
 	Timestamp       time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
-	CryptoId        int       `sql_type:"INTEGER"`
+	CryptoId        int       `sql_type:"INTEGER" pkey:"YES"`
 	CryptoName      string    `sql_type:"TEXT"`
 	CryptoLastPrice float32   `sql_type:"NUMERIC(15,9)"`
 	CryptoUpdate    time.Time `sql_type:"TIMESTAMP"`

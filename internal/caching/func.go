@@ -70,3 +70,20 @@ func CheckCacheAndWrite[T iCacheble](k int, object T, link iCacher[T]) (retObjec
 
 	return retObject, err
 }
+
+// Функция наполнения кеша из БД
+func FillCache[T iCacheble](object *T, link iCacher[T]) error {
+
+	expLst := []database.Expressions{
+		{Key: "CryptoId", Operator: database.NotEQ, Value: "0"},
+	}
+	rs, _, err := database.ReadData(object, expLst, 100)
+	if err != nil {
+		return fmt.Errorf("CheckCache:" + err.Error())
+	}
+	for k, v := range rs {
+		link.Set(k, *v, 0)
+	}
+
+	return nil
+}
