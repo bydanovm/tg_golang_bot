@@ -21,18 +21,20 @@ func SetCache[T iCacheble](k int, object T, duration time.Duration, link iCacher
 	link.Set(k, object, duration)
 }
 
-func CheckCacheAndWrite[T iCacheble](k int, object T, link iCacher[T]) (retObject []T, err error) {
+// Проверка и получение первого объекта
+func CheckCacheAndWrite[T iCacheble](k int, object T, link iCacher[T]) (retObject T, err error) {
 	// Первая проверка, если в кеше есть - возращаем обьект
 	// Иначе, проверяем в БД
-	retObject, err = GetCache(k, link)
+	retObjectList, err := GetCache(k, link)
 	if err == nil {
+		retObject = retObjectList[0]
 		return retObject, nil
 	}
 
 	// Сериализация для отправки
 	buffer, err := models.MarshalJSON(object)
 	if err != nil {
-		return nil, fmt.Errorf("WriteRecord:" + err.Error())
+		return retObject, fmt.Errorf("WriteRecord:" + err.Error())
 	}
 
 	// Проверка наличия в БД
@@ -42,25 +44,28 @@ func CheckCacheAndWrite[T iCacheble](k int, object T, link iCacher[T]) (retObjec
 			// Запись в БД и возврат ответного тела
 			result, err = database.WriteRecord[T](buffer)
 			if err != nil {
-				return nil, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+				return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
 			}
 		} else {
-			return nil, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+			return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
 		}
 	}
 
 	// Десереализация для записи в кеш
 	data, err := models.UnmarshalJSON[T](result)
 	if err != nil {
-		return nil, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+		return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
 	}
 
 	// Запись к кеш
 	SetCache(k, data, 0, link)
 
 	// Считываем повторно из кеша
-	retObject, err = GetCache(k, link)
-
+	retObjectList, err = GetCache(k, link)
+	if err != nil {
+		return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+	}
+	retObject = retObjectList[0]
 	// Нужна ли проверка на консистентность?
 
 	return retObject, err

@@ -1,12 +1,5 @@
 package tgbot
 
-type UserInfo struct {
-	UserId       int
-	ChatId       int64
-	UserName     string
-	FirstName    string
-	LastName     string
-	LanguageCode string
-	IsBot        bool
-	IsBanned     bool
-}
+import "github.com/mbydanov/tg_golang_bot/internal/database"
+
+type UserInfo = database.Users
