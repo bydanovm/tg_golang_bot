@@ -154,7 +154,7 @@ func checkAuthUser(bot *tgbotapi.BotAPI, update *tgbotapi.Update) (user database
 	userInfo := FindUserIdFromUpdate(update)
 	// Проверка нахождения пользователя в кеше (БД)
 	// с возможностью записи в базу нового пользователя
-	user, err = caching.CheckCacheAndWrite(userInfo.IdUsr, userInfo, caching.UsersCache)
+	user, err = caching.CheckCacheAndWrite(caching.UsersCache, userInfo.IdUsr, userInfo)
 	if err != nil {
 		ans = fmt.Sprintf("Извините. При авторизации возникла какая-то ошибка.\nПопробуйте позже /%s", Start)
 		msg = tgbotapi.NewMessage(user.ChatIdUsr,

@@ -1,32 +1,38 @@
 package caching
 
 import (
+	"sort"
 	"sync"
 	"time"
 
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 )
 
-type item[T iCacheble] struct {
+var UsersCache = Init[database.Users](time.Minute, time.Minute*2)
+
+var CryptoCache = Init[database.DictCrypto](time.Minute*10, time.Hour)
+
+type Item[T iCacheble] struct {
 	value      []T
 	created    time.Time
 	expiration int64
 }
 
-var UsersCache = Init[database.Users](time.Minute, time.Minute*2)
-
 type Cache[T iCacheble] struct {
 	mu                sync.RWMutex
 	defaultExpiration time.Duration // Время жизни
 	cleanupInterval   time.Duration // Интервал очистки
-	items             map[int]item[T]
+	items             map[int]Item[T]
+	keys              []int
+	keysMap           map[string]int
 }
 
 func Init[T iCacheble](defaultExpiration, cleanupInterval time.Duration) *Cache[T] {
 	cache := Cache[T]{
-		items:             make(map[int]item[T]),
+		items:             make(map[int]Item[T]),
 		defaultExpiration: defaultExpiration,
 		cleanupInterval:   cleanupInterval,
+		keysMap:           make(map[string]int),
 	}
 	if cleanupInterval > 0 {
 		cache.startCleaner()
@@ -64,7 +70,7 @@ func (uc *Cache[T]) Get(k int) (res []T, ok bool) {
 	return res, ok
 }
 
-func (uc *Cache[T]) GetByIdx(k int, idx int) (res T, ok bool) {
+func (uc *Cache[T]) GetByIdxInMap(k int, idx int) (res T, ok bool) {
 	uc.mu.RLock()
 	defer uc.mu.RUnlock()
 	v, ok := uc.items[k]
@@ -80,6 +86,9 @@ func (uc *Cache[T]) GetByIdx(k int, idx int) (res T, ok bool) {
 
 	return res, ok
 }
+func (uc *Cache[T]) GetKeyByIdx(idx int) (key int) {
+	return uc.keys[idx]
+}
 
 // Добавление новой записи + перезапись существующей
 func (uc *Cache[T]) Set(k int, val T, duration time.Duration) {
@@ -92,11 +101,18 @@ func (uc *Cache[T]) Set(k int, val T, duration time.Duration) {
 		// Время истечения кеша
 		expr = time.Now().Add(duration).UnixNano()
 	}
-
+	// Проверка на нахождение ключа в слайсе
+	uc.mu.RLock()
+	_, ok := uc.items[k]
+	uc.mu.RUnlock()
+	if !ok {
+		uc.keys = append(uc.keys, k)
+		sort.Slice(uc.keys, func(i, j int) bool { return uc.keys[i] < uc.keys[j] })
+	}
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 
-	uc.items[k] = item[T]{
+	uc.items[k] = Item[T]{
 		value:      []T{val},
 		expiration: expr,
 		created:    time.Now(),
@@ -122,6 +138,13 @@ func (uc *Cache[T]) Delete(k int) {
 	defer uc.mu.Unlock()
 	if _, ok := uc.items[k]; ok {
 		delete(uc.items, k)
+	}
+	// Удаляем ключ из слайса
+	for idx, v := range uc.keys {
+		if v == k {
+			uc.keys = append(uc.keys[:idx], uc.keys[idx+1:]...)
+			break
+		}
 	}
 }
 
@@ -155,6 +178,10 @@ func (uc *Cache[T]) DropByIdx(k int, idx int) {
 	}
 }
 
+func (uc *Cache[T]) GetCacheCountRecord() int {
+	return len(uc.keys)
+}
+
 func (uc *Cache[T]) startCleaner() {
 	go uc.cleaner()
 }
@@ -180,11 +207,13 @@ func (uc *Cache[T]) cleaner() {
 			return keys
 		}
 		clearItems := func(keys []int) {
-			uc.mu.Lock()
-			defer uc.mu.Unlock()
+			// uc.mu.Lock()
+			// defer uc.mu.Unlock()
 			for _, k := range keys {
-				delete(uc.items, k)
+				// delete(uc.items, k)
+				uc.Delete(k)
 			}
+
 		}
 		if keys := expiredKeys(); len(keys) != 0 {
 			clearItems(keys)

@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/mbydanov/tg_golang_bot/internal/caching"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 	"github.com/mbydanov/tg_golang_bot/internal/notifications"
@@ -35,6 +36,7 @@ func main() {
 	// go config.GetConfig(chConfig)
 	// Кешировние
 	// Кешируем словарь криптовалют
+	caching.FillCache(caching.CryptoCache, 100, 0)
 	if err := database.DCCache.CheckAllCache(); err != nil {
 		services.Logging.Panic(fmt.Errorf("main:" + err.Error()))
 	}

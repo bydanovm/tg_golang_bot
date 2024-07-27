@@ -8,12 +8,14 @@ type iCacheble interface {
 }
 type iCacher[T any] interface {
 	Get(int) ([]T, bool)
-	GetByIdx(int, int) (T, bool)
+	GetKeyByIdx(int) int
+	GetByIdxInMap(int, int) (T, bool)
 	Set(int, T, time.Duration)
 	Add(int, T)
 	Delete(int)
 	Pop(int)
 	DropByIdx(int, int)
+	GetCacheCountRecord() int
 	URLockU() bool
 	URUnlock() bool
 }
