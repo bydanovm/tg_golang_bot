@@ -2,6 +2,7 @@ package caching
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -82,8 +83,14 @@ func FillCache[T iCacheble](link iCacher[T], records int, offset int) error {
 		records = 100
 	}
 
+	// Определение PK в структуре, по которому будет произведен поиск
+	primaryKey, err := models.GetStructInfoPK(object)
+	if err != nil {
+		return fmt.Errorf("CheckCache:" + err.Error())
+	}
+
 	expLst := []database.Expressions{
-		{Key: "CryptoId", Operator: database.NotEQ, Value: "0"},
+		{Key: primaryKey.StructNameFields, Operator: database.NotEQ, Value: "0"},
 	}
 	rs, _, err := database.ReadData(object, expLst, records)
 	if err != nil {
@@ -114,6 +121,53 @@ func GetCacheByIdxInMap[T iCacheble](link iCacher[T], k int, idx int) (res T, er
 		err = fmt.Errorf("GetCacheByIdxInMap:key:%d:idx:%d:Cache:%t", k, idx, link)
 	}
 	return object, err
+}
+
+// Возврат связки ключей map[FK][]PK
+func GetCacheKeyChain[T iCacheble](link iCacher[T], in interface{}) []interface{} {
+	return link.GetKeyChain(in)
+}
+
+// Возврат записей по связке ключей map[FK][]PK с возможностью сортировки
+func GetCacheRecordsKeyChain[T iCacheble](link iCacher[T], in interface{}, sorting bool) (out []T, err error) {
+	// Сортируем полученные ключи
+	keyChain := GetCacheKeyChain(link, in)
+	sort.Slice(keyChain, func(i, j int) bool {
+		iElem := keyChain[i]
+		jElem := keyChain[j]
+		switch a := iElem.(type) {
+		case int:
+			if b, ok := jElem.(int); ok {
+				if sorting {
+					return a > b
+				} else {
+					return a < b
+				}
+			}
+		case string:
+			if b, ok := jElem.(string); ok {
+				if sorting {
+					return a > b
+				} else {
+					return a < b
+				}
+			}
+		}
+		return false
+	})
+	for _, v := range keyChain {
+		convV, ok := v.(int)
+		if !ok {
+			return out, fmt.Errorf("GetCacheRecordsKeyChain:TypeConversionError")
+		}
+		tracking, err := GetCacheByIdxInMap(link, convV, 0)
+		if err != nil {
+			return out, fmt.Errorf("GetCacheRecordsKeyChain:" + err.Error())
+		} else {
+			out = append(out, tracking)
+		}
+	}
+	return out, err
 }
 
 // Возврат 10 элементов мапы с offset отсортированному по ключу

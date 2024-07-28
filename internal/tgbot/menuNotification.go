@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
+	"github.com/mbydanov/tg_golang_bot/internal/caching"
 	"github.com/mbydanov/tg_golang_bot/internal/coinmarketcup"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/services"
@@ -56,7 +57,7 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 			case GetNotif:
 				ans = "Текущие оповещения\n"
 				// Вывести от новых к старым в формате Валюта - Значение
-				trackings, _ := database.TCCache.GetTrackingForUser(update.CallbackQuery.From.ID)
+				trackings, _ := caching.GetCacheRecordsKeyChain(caching.TrackingCache, update.CallbackQuery.From.ID, true)
 				// Создание списка кнопок
 				listButtons := make([]buttonInfo, 0, 10)
 				for _, v := range trackings {

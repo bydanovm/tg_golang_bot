@@ -101,3 +101,17 @@ func (s *StructInfo) GetPrimaryKey() (field fieldInfo, err error) {
 
 	return field, err
 }
+
+// Получить поле с FK для проверки в БД
+func (s *StructInfo) GetForeignKey() (field fieldInfo, err error) {
+	for _, v := range s.StructFieldInfo {
+		if v.StructTagIsFKey == "YES" {
+			field = v
+		}
+	}
+	if field.StructNameFields == "" {
+		err = fmt.Errorf("GetForeignKey:FK is not found")
+	}
+
+	return field, err
+}

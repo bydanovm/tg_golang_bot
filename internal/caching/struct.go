@@ -6,11 +6,14 @@ import (
 	"time"
 
 	"github.com/mbydanov/tg_golang_bot/internal/database"
+	"github.com/mbydanov/tg_golang_bot/internal/models"
 )
 
 var UsersCache = Init[database.Users](time.Minute, time.Minute*2)
 
 var CryptoCache = Init[database.DictCrypto](time.Minute*10, time.Hour)
+
+var TrackingCache = Init[database.TrackingCrypto](time.Hour*24, time.Hour*24)
 
 type Item[T iCacheble] struct {
 	value      []T
@@ -24,15 +27,16 @@ type Cache[T iCacheble] struct {
 	cleanupInterval   time.Duration // Интервал очистки
 	items             map[int]Item[T]
 	keys              []int
-	keysMap           map[string]int
+	keysMap           map[interface{}][]interface{}
 }
 
+// Инициализация кеша
 func Init[T iCacheble](defaultExpiration, cleanupInterval time.Duration) *Cache[T] {
 	cache := Cache[T]{
 		items:             make(map[int]Item[T]),
 		defaultExpiration: defaultExpiration,
 		cleanupInterval:   cleanupInterval,
-		keysMap:           make(map[string]int),
+		keysMap:           make(map[interface{}][]interface{}),
 	}
 	if cleanupInterval > 0 {
 		cache.startCleaner()
@@ -90,6 +94,19 @@ func (uc *Cache[T]) GetKeyByIdx(idx int) (key int) {
 	return uc.keys[idx]
 }
 
+// Возврат связки ключей map[FK][]PK
+func (uc *Cache[T]) GetKeyChain(in interface{}) []interface{} {
+	uc.mu.RLock()
+	defer uc.mu.RUnlock()
+
+	v, ok := uc.keysMap[in]
+	if !ok {
+		return nil
+	}
+
+	return v
+}
+
 // Добавление новой записи + перезапись существующей
 func (uc *Cache[T]) Set(k int, val T, duration time.Duration) {
 	var expr int64
@@ -117,6 +134,14 @@ func (uc *Cache[T]) Set(k int, val T, duration time.Duration) {
 		expiration: expr,
 		created:    time.Now(),
 	}
+
+	// Добавление ключа связки PK <-> FK
+	primaryKey, _ := models.GetStructInfoPK(val)
+	foreignKey, err := models.GetStructInfoFK(val)
+	if err == nil {
+		uc.keysMap[foreignKey.StructValue] = append(uc.keysMap[foreignKey.StructValue], primaryKey.StructValue)
+	}
+
 }
 
 // Добавление записи в мапу к существующей
@@ -136,9 +161,9 @@ func (uc *Cache[T]) Add(k int, val T) {
 func (uc *Cache[T]) Delete(k int) {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
-	if _, ok := uc.items[k]; ok {
-		delete(uc.items, k)
-	}
+	// if _, ok := uc.items[k]; ok {
+	delete(uc.items, k)
+	// }
 	// Удаляем ключ из слайса
 	for idx, v := range uc.keys {
 		if v == k {
@@ -207,10 +232,7 @@ func (uc *Cache[T]) cleaner() {
 			return keys
 		}
 		clearItems := func(keys []int) {
-			// uc.mu.Lock()
-			// defer uc.mu.Unlock()
 			for _, k := range keys {
-				// delete(uc.items, k)
 				uc.Delete(k)
 			}
 

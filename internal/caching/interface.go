@@ -10,6 +10,7 @@ type iCacher[T any] interface {
 	Get(int) ([]T, bool)
 	GetKeyByIdx(int) int
 	GetByIdxInMap(int, int) (T, bool)
+	GetKeyChain(in interface{}) []interface{}
 	Set(int, T, time.Duration)
 	Add(int, T)
 	Delete(int)

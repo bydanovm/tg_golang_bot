@@ -53,3 +53,31 @@ func UnmarshalJSON[T any](buffer []byte) (res T, err error) {
 	}
 	return res, nil
 }
+func GetStructInfoPK(in interface{}) (fInfo fieldInfo, err error) {
+	structInfo := StructInfo{}
+	// Определяем информацию по структуре
+	if err = structInfo.GetFieldInfo(in); err != nil {
+		return fInfo, fmt.Errorf("GetStructInfoPK:" + err.Error())
+	}
+	// Получаем PK
+	fInfo, err = structInfo.GetPrimaryKey()
+	if err != nil {
+		return fInfo, fmt.Errorf("GetStructInfoPK:" + err.Error())
+	}
+
+	return fInfo, err
+}
+func GetStructInfoFK(in interface{}) (fInfo fieldInfo, err error) {
+	structInfo := StructInfo{}
+	// Определяем информацию по структуре
+	if err = structInfo.GetFieldInfo(in); err != nil {
+		return fInfo, fmt.Errorf("GetStructInfoPK:" + err.Error())
+	}
+	// Получаем FK
+	fInfo, err = structInfo.GetForeignKey()
+	if err != nil {
+		return fInfo, fmt.Errorf("GetStructInfoPK:" + err.Error())
+	}
+
+	return fInfo, err
+}
