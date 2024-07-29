@@ -9,8 +9,6 @@ import (
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
 	"github.com/mbydanov/tg_golang_bot/internal/coinmarketcup"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
-	"github.com/mbydanov/tg_golang_bot/internal/services"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -61,8 +59,9 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 				// Создание списка кнопок
 				listButtons := make([]buttonInfo, 0, 10)
 				for _, v := range trackings {
-					infoCurrency, _ := database.DCCache.GetCache(v.DctCrpId)
-					listButtons = append(listButtons, buttonInfo{infoCurrency.CryptoName + "-" + fmt.Sprintf(FormatFloatToString(v.ValTrkCrp), v.ValTrkCrp), GetNotif + "_" + fmt.Sprintf("%d", v.IdTrkCrp)})
+					// infoCurrency, _ := database.DCCache.GetCache(v.DctCrpId)
+					infoCurrency, _ := caching.GetCacheByIdxInMap(caching.CryptoCache, v.DctCrpId, 0)
+					listButtons = append(listButtons, buttonInfo{infoCurrency.CryptoName + " - " + fmt.Sprintf(FormatFloatToString(v.ValTrkCrp), v.ValTrkCrp) + " $", GetNotifId + "_" + fmt.Sprintf("%d", v.IdTrkCrp)})
 				}
 				keyboard = ConvertToButtonInlineKeyboard(listButtons, GetNotif, 3)
 			}
@@ -72,38 +71,31 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 			msg_t.ReplyMarkup = &keyboard
 			msg = msg_t
 
-		} else if len(callBackData) == 2 && callBackData[0] == SetNotif {
-			// Оповещения 2 уровень
-			switch update.CallbackQuery.Data {
-			case SetNotifCrypto: // Выбрать крипту
-				// Текст взять из базы (нужен справочник)
-				ans = ChooseCrypto
-				// Выбор ТОП-10 криптовалют
-				top10cur, err := database.DCCache.GetTop10Cache()
-				if err != nil {
-					services.Logging.WithFields(logrus.Fields{
-						"userId":   update.CallbackQuery.Message.From.ID,
-						"userName": update.CallbackQuery.Message.From.UserName,
-					}).Error(err)
-				}
-				var row []tgbotapi.InlineKeyboardButton
-				for k, v := range top10cur {
-					btn := tgbotapi.NewInlineKeyboardButtonData(v.CryptoName, SetNotifCrypto+"_"+v.CryptoName)
-					row = append(row, btn)
-					// Делим на N строк по 5 элементов
-					if (k+1)%5 == 0 {
-						keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
-						row = nil
-					}
-				}
-				row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", Start))
-				row = append(row, tgbotapi.NewInlineKeyboardButtonData("Ввод", SetNotifCryptoEnter))
-				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
+		} else if len(callBackData) == 2 {
+			if callBackData[0] == SetNotif {
+				// Оповещения 2 уровень
+				switch update.CallbackQuery.Data {
+				case SetNotifCrypto: // Выбрать крипту
+					// Текст взять из базы (нужен справочник)
+					ans = ChooseCrypto
+					// Выбор ТОП-10 криптовалют
+					offset := 10
+					keyboard = GetCryptoListOffset(offset, SetNotifCrypto, SetNotif)
 
-			case SetNotifPrice: // Установить цену
-				// Текст взять из базы (нужен справочник)
-				ans = ChooseSum
+				case SetNotifPrice: // Установить цену
+					// Текст взять из базы (нужен справочник)
+					ans = ChooseSum
 
+				}
+			} else if callBackData[0] == GetNotifId {
+				// Мои оповещения -> выбрано Оповещение
+				id, _ := strconv.Atoi(callBackData[1])
+				infoTracking, _ := caching.GetCacheByIdxInMap(caching.TrackingCache, id, 0)
+				infoCurrency, _ := caching.GetCacheByIdxInMap(caching.CryptoCache, infoTracking.DctCrpId, 0)
+				// Считвание типа триггера
+				ans = fmt.Sprintf("Выбрано отслеживание по %s\nТекущая стоимость 1 %s = "+FormatFloatToString(infoTracking.ValTrkCrp)+" $\nТип триггера: %d\nСрабатывание триггера: "+FormatFloatToString(infoTracking.ValTrkCrp)+"\n", infoCurrency.CryptoName, infoCurrency.CryptoName, infoCurrency.CryptoLastPrice, infoTracking.TypTrkCrpId, infoTracking.ValTrkCrp)
+
+				keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkupFromNode(GetNotifId), 1)
 			}
 
 			msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
@@ -336,6 +328,18 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 				msg_t.ReplyMarkup = &keyboard
 				msg = msg_t
 			}
+		} else if len(callBackData) == 4 && callBackData[0] == SetNotif && callBackData[1] == Crypto && callBackData[2] == Yet {
+			// Пришло 4 аргумента для меню выбора КВ
+			ans = ChooseGetCrypto
+
+			offset, _ := strconv.Atoi(callBackData[3])
+			keyboard = GetCryptoListOffset(offset, SetNotifCrypto, SetNotif)
+
+			msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
+				update.CallbackQuery.Message.MessageID, ans)
+			msg_t.ReplyMarkup = &keyboard
+
+			msg = msg_t
 		}
 	} else if update.Message.ReplyToMessage != nil {
 
@@ -356,7 +360,7 @@ func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg inte
 
 			n, err := strconv.ParseFloat(update.Message.Text, 32)
 			if err != nil {
-				ans += fmt.Sprint("Ошибка преобразования цены. Измените цену и повторите заного\n")
+				ans += "Ошибка преобразования цены. Измените цену и повторите заного\n"
 
 				var row []tgbotapi.InlineKeyboardButton
 				row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", SetNotifCrypto))

@@ -120,12 +120,19 @@ func GetCryptoFunc(idStr string) (ans string, keyboard tgbotapi.InlineKeyboardMa
 
 	return ans, keyboard
 }
-func GetCryptoListOffset(offset int) (keyboard tgbotapi.InlineKeyboardMarkup) {
+func GetCryptoListOffset(offset int, callFrom ...string) (keyboard tgbotapi.InlineKeyboardMarkup) {
+	prefix := GetCrypto
+	back := Start
+	if len(callFrom) == 2 {
+		prefix = callFrom[0]
+		back = callFrom[1]
+	}
+
 	listCryptoCur, lastList, _ := caching.GetCacheOffset(caching.CryptoCache, offset)
 
 	var row []tgbotapi.InlineKeyboardButton
 	for k, v := range listCryptoCur {
-		btn := tgbotapi.NewInlineKeyboardButtonData(v.CryptoName, GetCrypto+"_"+strconv.Itoa(v.CryptoId))
+		btn := tgbotapi.NewInlineKeyboardButtonData(v.CryptoName, prefix+"_"+strconv.Itoa(v.CryptoId))
 		row = append(row, btn)
 		// Делим на N строк по 5 элементов
 		if (k+1)%5 == 0 {
@@ -135,13 +142,13 @@ func GetCryptoListOffset(offset int) (keyboard tgbotapi.InlineKeyboardMarkup) {
 	}
 
 	if offset > 10 {
-		row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", GetCryptoYet+`_`+strconv.Itoa(offset-10)))
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", prefix+`_`+Yet+`_`+strconv.Itoa(offset-10)))
 	} else {
-		row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", Start))
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData("Назад", back))
 	}
 
 	if !lastList {
-		row = append(row, tgbotapi.NewInlineKeyboardButtonData("Ещё", GetCryptoYet+`_`+strconv.Itoa(offset+10)))
+		row = append(row, tgbotapi.NewInlineKeyboardButtonData("Ещё", prefix+`_`+Yet+`_`+strconv.Itoa(offset+10)))
 	}
 	// row = append(row, tgbotapi.NewInlineKeyboardButtonData("Ввод", GetCryptoEnter))
 	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
