@@ -3,6 +3,7 @@ package models
 type Node struct {
 	Name        string
 	Description string
+	Parent      *Node
 	Children    []*Node
 	Visible     bool
 }
@@ -32,6 +33,7 @@ func (tn *TreeNode) Add(name, desc, parentId string, visible bool) {
 		Name:        name,
 		Description: desc,
 		Children:    []*Node{},
+		Parent:      &Node{},
 		Visible:     visible}
 	if parentId == "" {
 		tn.root = node
@@ -40,6 +42,7 @@ func (tn *TreeNode) Add(name, desc, parentId string, visible bool) {
 		if !ok {
 			return
 		}
+		node.Parent = parent
 		parent.Children = append(parent.Children, node)
 	}
 	tn.nodeTable[name] = node
@@ -57,13 +60,18 @@ func (tr *TreeNode) GetNodeChild(name string) []*Node {
 	return nodes
 }
 
-// func ShowNode(node *Node, prefix string) {
-// 	if prefix == "" {
-// 		fmt.Printf("%v\n\n", node.name)
-// 	} else {
-// 		fmt.Printf("%v %v\n\n", prefix, node.name)
-// 	}
-// 	for _, n := range node.children {
-// 		ShowNode(n, prefix+"--")
-// 	}
-// }
+func (tr *TreeNode) GetNode(name string) *Node {
+	node, ok := tr.nodeTable[name]
+	if !ok {
+		return nil
+	}
+	return node
+}
+
+func (tr *TreeNode) GetParentNode(name string) *Node {
+	node, ok := tr.nodeTable[name]
+	if !ok {
+		return nil
+	}
+	return node.Parent
+}
