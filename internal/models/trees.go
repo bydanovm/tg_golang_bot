@@ -16,7 +16,7 @@ type TreeNode struct {
 func InitTree() *TreeNode {
 	items := make(map[string]*Node)
 	node := &Node{
-		Name:     "0",
+		Name:     "Start",
 		Children: []*Node{}}
 
 	items[node.Name] = node
@@ -33,7 +33,7 @@ func (tn *TreeNode) Add(name, desc, parentId string, visible bool) {
 		Name:        name,
 		Description: desc,
 		Children:    []*Node{},
-		Parent:      &Node{},
+		Parent:      nil,
 		Visible:     visible}
 	if parentId == "" {
 		tn.root = node
@@ -45,7 +45,9 @@ func (tn *TreeNode) Add(name, desc, parentId string, visible bool) {
 		node.Parent = parent
 		parent.Children = append(parent.Children, node)
 	}
+
 	tn.nodeTable[name] = node
+
 }
 
 func (tr *TreeNode) GetNodeChild(name string) []*Node {
@@ -71,6 +73,9 @@ func (tr *TreeNode) GetNode(name string) *Node {
 func (tr *TreeNode) GetParentNode(name string) *Node {
 	node, ok := tr.nodeTable[name]
 	if !ok {
+		return nil
+	}
+	if node.Parent == nil {
 		return nil
 	}
 	return node.Parent

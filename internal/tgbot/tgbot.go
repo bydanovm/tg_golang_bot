@@ -3,7 +3,6 @@ package tgbot
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	_ "github.com/lib/pq"
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
@@ -18,7 +17,7 @@ import (
 
 // Создаем бота
 func TelegramBot(chanModules chan models.StatusChannel) {
-	var msg interface{}
+	// var msg interface{}
 	// Создаем бота
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TOKEN"))
 	if err != nil {
@@ -75,35 +74,36 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 				"user":   user.IdUsr,
 			}).Error(err.Error())
 		}
-		msg = menuGetCrypto(&update, keyboardBot)
-		if msg == nil {
-			msg = menuNotification(&update, keyboardBot)
-		}
+		menuHandler(&update, *bot)
+		// msg = menuGetCrypto(&update, keyboardBot)
+		// if msg == nil {
+		// 	msg = menuNotification(&update, keyboardBot)
+		// }
 
-		var command = ""
+		// var command = ""
 
-		if update.Message != nil {
-			command = update.Message.Command()
-			if command != "" {
-				// Обработка команд
-				// start - Начало
-				// number_of_users - Получить количество активных пользователей
-				// getcrypto - Получить актуальную информацию по криптовалюте
-				// setnotif - Установить уведомления по изменению цены криптовалюты
-				switch command {
-				case Start:
-					// Проверяем есть ли пользователь в кеше или базе
-					msg = menuStart(&update, keyboardBot)
-				default:
-					// ans := "Команда /" + command + " не найдена.\n" +
-					// 	"Воспользуйся командой /" + Start + " для знакомства со мной."
+		// if update.Message != nil {
+		// 	command = update.Message.Command()
+		// 	if command != "" {
+		// 		// Обработка команд
+		// 		// start - Начало
+		// 		// number_of_users - Получить количество активных пользователей
+		// 		// getcrypto - Получить актуальную информацию по криптовалюте
+		// 		// setnotif - Установить уведомления по изменению цены криптовалюты
+		// 		switch command {
+		// 		case Start:
+		// 			// Проверяем есть ли пользователь в кеше или базе
+		// 			// msg = menuStart(&update, keyboardBot)
+		// 		default:
+		// 			// ans := "Команда /" + command + " не найдена.\n" +
+		// 			// 	"Воспользуйся командой /" + Start + " для знакомства со мной."
 
-					// Отправлем сообщение
-					// msg = tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID),
-					// 	ans)
-				}
-			}
-		}
+		// 			// Отправлем сообщение
+		// 			// msg = tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID),
+		// 			// 	ans)
+		// 		}
+		// 	}
+		// }
 		if update.CallbackQuery != nil {
 			// Проверка команд
 			callback := tgbotapi.NewCallback(update.CallbackQuery.ID, "")
@@ -117,21 +117,21 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 				}).Error()
 			}
 			// Разберем data callback по структуре command_cryptocur
-			callBackData := strings.Split(update.CallbackQuery.Data, "_")
+			// callBackData := strings.Split(update.CallbackQuery.Data, "_")
 			// Получение инфо о крипте
-			if len(callBackData) == 1 {
-				if callBackData[0] == Start {
-					msg = menuStart(&update, keyboardBot)
-				}
-			}
+			// if len(callBackData) == 1 {
+			// 	if callBackData[0] == Start {
+			// 		msg = menuStart(&update, keyboardBot)
+			// 	}
+			// }
 		}
 
-		switch msgConv := msg.(type) {
-		case tgbotapi.EditMessageTextConfig:
-			bot.Send(msgConv)
-		case tgbotapi.MessageConfig:
-			bot.Send(msgConv)
-		}
+		// switch msgConv := msg.(type) {
+		// case tgbotapi.EditMessageTextConfig:
+		// 	bot.Send(msgConv)
+		// case tgbotapi.MessageConfig:
+		// 	bot.Send(msgConv)
+		// }
 	}
 }
 
@@ -202,35 +202,4 @@ func FindUserIdFromUpdate(update *tgbotapi.Update) (userInfo UserInfo) {
 	userInfo.IsBanned = false
 	userInfo.IdLvlSec = 5
 	return userInfo
-}
-func menuStart(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg interface{}) {
-	var ans string
-	var keyboard tgbotapi.InlineKeyboardMarkup
-
-	// Отправлем приветственное сообщение
-	ans = "Привет! Я - " + os.Getenv("BOT_NAME") + " помогу тебе знать актуальную информацию по криптовалюте\n" +
-		"Используй кнопки ниже, чтобы узнать интересующую информацию.\n"
-
-	keyboard = MenuToInlineKeyboard(keyboardBot.GetMainMenuInlineMarkup(), 2)
-
-	if update.CallbackQuery != nil &&
-		update.CallbackQuery.Message.From.UserName == os.Getenv("BOT_NAME") {
-		msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
-			update.CallbackQuery.Message.MessageID, ans)
-		msg_t.ReplyMarkup = &keyboard
-		msg = msg_t
-	} else if update.Message != nil &&
-		update.Message.From.UserName == os.Getenv("BOT_NAME") {
-		msg_t := tgbotapi.NewEditMessageText(update.Message.Chat.ID,
-			update.Message.MessageID, ans)
-		msg_t.ReplyMarkup = &keyboard
-		msg = msg_t
-	} else if update.Message != nil {
-		msg_t := tgbotapi.NewMessage(update.Message.Chat.ID,
-			ans)
-		msg_t.ReplyMarkup = &keyboard
-		msg = msg_t
-	}
-
-	return msg
 }
