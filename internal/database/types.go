@@ -42,8 +42,8 @@ type LogMsg struct {
 type DictCrypto struct {
 	Id              int       `sql_type:"SERIAL PRIMARY KEY"`
 	Timestamp       time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
-	CryptoId        int       `sql_type:"INTEGER"`
-	CryptoName      string    `sql_type:"TEXT"`
+	CryptoId        int       `sql_type:"INTEGER" pkey:"YES"`
+	CryptoName      string    `sql_type:"TEXT" fkey:"YES"`
 	CryptoLastPrice float32   `sql_type:"NUMERIC(15,9)"`
 	CryptoUpdate    time.Time `sql_type:"TIMESTAMP"`
 	Active          bool      `sql_type:"BOOLEAN NOT NULL DEFAULT TRUE"`
@@ -86,7 +86,7 @@ type Groups struct {
 	LvlSecId int    `sql_type:"INTEGER REFERENCES LevelsSecure (idLvlSec)"`
 }
 type Users struct {
-	IdUsr     int       `sql_type:"SERIAL PRIMARY KEY"`
+	IdUsr     int       `sql_type:"SERIAL PRIMARY KEY" pkey:"YES"`
 	TsUsr     time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 	NameUsr   string    `sql_type:"TEXT NOT NULL"`
 	FirstName string    `sql_type:"TEXT NOT NULL"`
@@ -214,13 +214,13 @@ type LimitsDict struct {
 	StdValLmt  int    `sql_type:"INTEGER DEFAULT 0"`
 }
 type Limits struct {
-	IdLmt       int       `sql_type:"SERIAL PRIMARY KEY"`
+	IdLmt       int       `sql_type:"SERIAL PRIMARY KEY" pkey:"YES"`
 	ValAvailLmt int       `sql_type:"INTEGER DEFAULT 0"`
 	ValUsedLmt  int       `sql_type:"INTEGER DEFAULT 0"`
 	ActiveLmt   bool      `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
 	TsLmtOn     time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 	TsLmtOff    time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
-	UserId      int       `sql_type:"INTEGER REFERENCES Users (idUsr)"`
+	UserId      int       `sql_type:"INTEGER REFERENCES Users (idUsr)" fkey:"YES"`
 	LtmDctId    int       `sql_type:"INTEGER REFERENCES LimitsDict (idLmtDct)"`
 }
 
@@ -262,7 +262,7 @@ func (l *Limits) GetLimit(nameLmt string, usrId int) error {
 			mapstructure.Decode(subRs, &l)
 		}
 	} else {
-		return fmt.Errorf("GetLimit:Limit %s for user %s id:%v not found", lmtDct.NameLmtDct, UsersCache.GetUserName(usrId), usrId)
+		return fmt.Errorf("GetLimit:Limit %s for user %s id:%v not found", lmtDct.NameLmtDct, "username", usrId)
 	}
 
 	return nil
@@ -355,13 +355,13 @@ func (t *TypeTrackingCrypto) GetTypeInfo() (interface{}, error) {
 }
 
 type TrackingCrypto struct {
-	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY"`
+	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY" pkey:"YES"`
 	ValTrkCrp   float32 `sql_type:"NUMERIC(19,9)"`
 	OnTrkCrp    bool    `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
 	LmtId       int     `sql_type:"INTEGER REFERENCES Limits (lmtid)"`
 	TypTrkCrpId int     `sql_type:"INTEGER REFERENCES TypeTrackingCrypto (idTypTrkCrp)"`
 	DctCrpId    int     `sql_type:"INTEGER REFERENCES DictCrypto (CryptoId)"`
-	UserId      int     `sql_type:"INTEGER REFERENCES Users (idUsr)"`
+	UserId      int     `sql_type:"INTEGER REFERENCES Users (idUsr)"  fkey:"YES"`
 }
 
 func (t *TrackingCrypto) GetTypeInfo() (interface{}, error) {

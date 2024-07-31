@@ -4,112 +4,106 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/mitchellh/mapstructure"
 )
 
-//	type CacheTemplate interface {
-//		CheckCache(int) error
-//		GetCache(int) error
-//	}
+// type RWMutexUsr struct {
+// 	sync.RWMutex
+// }
 
-type RWMutexUsr struct {
-	sync.RWMutex
-}
-
-type UserCache struct {
-	mu   RWMutexUsr
-	Item UsersCacheType
-}
+// type UserCache struct {
+// 	mu   RWMutexUsr
+// 	Item UsersCacheType
+// }
 
 // Кеширование пользователей
-type UsersCacheType map[int]Users
+// type UsersCacheType map[int]Users
 
-var UsersCache = Init()
+// var UsersCache = Init()
 
-func Init() *UserCache {
-	items := make(UsersCacheType)
+// func Init() *UserCache {
+// 	items := make(UsersCacheType)
 
-	cache := UserCache{
-		Item: items,
-	}
+// 	cache := UserCache{
+// 		Item: items,
+// 	}
 
-	return &cache
-}
+// 	return &cache
+// }
 
-func (uc *UserCache) CheckCache(idUsr int) (err error) {
-	uc.mu.RLock()
-	isLock := true
-	if _, ok := uc.Item[idUsr]; !ok {
-		uc.mu.RUnlock()
-		isLock = false
-		// Заполняем информацию в кеш из БД
-		user := Users{IdUsr: idUsr}
-		if err = user.CheckUser(); err != nil {
-			err = fmt.Errorf("CheckCache:" + err.Error())
-		} else {
-			uc.mu.Lock()
-			uc.Item[idUsr] = user
-			uc.mu.Unlock()
-		}
-	}
-	if isLock {
-		uc.mu.RUnlock()
-	}
-	return err
-}
+// func (uc *UserCache) CheckCache(idUsr int) (err error) {
+// 	uc.mu.RLock()
+// 	isLock := true
+// 	if _, ok := uc.Item[idUsr]; !ok {
+// 		uc.mu.RUnlock()
+// 		isLock = false
+// 		// Заполняем информацию в кеш из БД
+// 		user := Users{IdUsr: idUsr}
+// 		if err = user.CheckUser(); err != nil {
+// 			err = fmt.Errorf("CheckCache:" + err.Error())
+// 		} else {
+// 			uc.mu.Lock()
+// 			uc.Item[idUsr] = user
+// 			uc.mu.Unlock()
+// 		}
+// 	}
+// 	if isLock {
+// 		uc.mu.RUnlock()
+// 	}
+// 	return err
+// }
 
-func (uc *UserCache) GetCache(idUsr int) (Users, error) {
-	uc.mu.RLock()
-	defer uc.mu.RUnlock()
-	if v, ok := uc.Item[idUsr]; !ok {
-		return Users{}, fmt.Errorf("GetCache:User not initialised")
-	} else {
-		return v, nil
-	}
-}
+// func (uc *UserCache) GetCache(idUsr int) (Users, error) {
+// 	uc.mu.RLock()
+// 	defer uc.mu.RUnlock()
+// 	if v, ok := uc.Item[idUsr]; !ok {
+// 		return Users{}, fmt.Errorf("GetCache:User not initialised")
+// 	} else {
+// 		return v, nil
+// 	}
+// }
 
-func (uc *UserCache) GetCount() (cnt int) {
-	uc.mu.RLock()
-	defer uc.mu.RUnlock()
-	cnt = len(uc.Item)
-	return cnt
-}
+// func (uc *UserCache) GetCount() (cnt int) {
+// 	uc.mu.RLock()
+// 	defer uc.mu.RUnlock()
+// 	cnt = len(uc.Item)
+// 	return cnt
+// }
 
-func (uc *UserCache) GetUserId(idUsr int) (id int) {
-	if user, err := uc.GetCache(idUsr); err != nil {
-		id = 0
-	} else {
-		id = user.IdUsr
-	}
-	return id
-}
+// func (uc *UserCache) GetUserId(idUsr int) (id int) {
+// 	if user, err := uc.GetCache(idUsr); err != nil {
+// 		id = 0
+// 	} else {
+// 		id = user.IdUsr
+// 	}
+// 	return id
+// }
 
-func (uc *UserCache) GetUserName(idUsr int) (name string) {
-	if user, err := uc.GetCache(idUsr); err != nil {
-		name = "Not found"
-	} else {
-		name = user.NameUsr
-	}
-	return name
-}
+// func (uc *UserCache) GetUserName(idUsr int) (name string) {
+// 	if user, err := uc.GetCache(idUsr); err != nil {
+// 		name = "Not found"
+// 	} else {
+// 		name = user.NameUsr
+// 	}
+// 	return name
+// }
 
-func (uc *UserCache) GetChatId(idUsr int) (chatId int64) {
-	if user, err := uc.GetCache(idUsr); err != nil {
-		chatId = int64(user.IdUsr)
-	} else {
-		chatId = user.ChatIdUsr
-	}
-	return chatId
-}
+// func (uc *UserCache) GetChatId(idUsr int) (chatId int64) {
+// 	if user, err := uc.GetCache(idUsr); err != nil {
+// 		chatId = int64(user.IdUsr)
+// 	} else {
+// 		chatId = user.ChatIdUsr
+// 	}
+// 	return chatId
+// }
 
-func (uc *UserCache) GetFLName(idUsr int) (FLName string) {
-	if user, err := uc.GetCache(idUsr); err != nil {
-		FLName = user.FirstName + " " + user.LastName
-	}
-	return FLName
-}
+// func (uc *UserCache) GetFLName(idUsr int) (FLName string) {
+// 	if user, err := uc.GetCache(idUsr); err != nil {
+// 		FLName = user.FirstName + " " + user.LastName
+// 	}
+// 	return FLName
+// }
 
 // Кеш типов отслеживаний
 type TypeTrackingCryptoCache map[int]TypeTrackingCrypto

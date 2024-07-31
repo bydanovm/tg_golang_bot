@@ -7,27 +7,34 @@ import (
 
 const (
 	// Comands
-	Start                 string = "start"           // Начало
-	NumberOfUsers         string = "number_of_users" // Получить количество активных пользователей
-	GetCrypto             string = "GetCrypto"       // Получить актуальную информацию по криптовалюте
-	GetCryptoEnter        string = GetCrypto + "_" + Enter
-	GetCryptoYet          string = GetCrypto + "_" + Yet
-	GetCryptoCurr         string = GetCrypto + "_" + Curr
-	GetNotif              string = "GetNotif"            // Получить свои оповещения
-	GetNotifUp            string = GetNotif + "_" + Up   // Свои оповещения - Назад
-	GetNotifBack          string = GetNotif + "_" + Back // Свои оповещения - Назад
-	GetNotifYet           string = GetNotif + "_" + Yet  // Свои оповещения - Вперед
-	GetNotifCrypto        string = GetNotif + "_" + Crypto
-	SetNotif              string = "SetNotif"                // Установить уведомления по изменению цены криптовалюты
-	SetNotifCrypto        string = SetNotif + "_" + Crypto   // Выбор или ввод КВ
-	SetNotifCryptoEnter   string = SetNotifCrypto + "_Enter" // Ввод своей КВ
-	SetNotifCriterion     string = SetNotif + "_Criterion"
-	SetNotifCriterionMore string = SetNotifCriterion + "_More"
-	SetNotifCriterionLess string = SetNotifCriterion + "_Less"
-	SetNotifPrice         string = SetNotif + "_" + Price
-	SetNotifPriceEnter    string = SetNotifPrice + "_" + Enter
-	SetNotifPriceYes      string = SetNotifPrice + "_Yes"
-	SetNotifPriceNo       string = SetNotifPrice + "_No"
+	Start                 string = "start"                    // Начало
+	NumberOfUsers         string = "number_of_users"          // Получить количество активных пользователей
+	GetCrypto             string = "GetCrypto"                // Получить актуальную информацию по криптовалюте
+	GetCryptoEnter        string = GetCrypto + Enter          // Ручной ввод КВ
+	GetCryptoNext         string = GetCrypto + "Next"         // Следующая страница
+	GetCryptoBack         string = GetCrypto + "Back"         // Предыдушщая страница / выход
+	GetCryptoCurr         string = GetCrypto + Curr           // Узнать курса валюты
+	GetCryptoCurrBack     string = GetCryptoCurr + "Back"     // Выход из курса валюты
+	GetCryptoCurrSetNot   string = GetCryptoCurr + SetNotif   // Установить отслеживание из курса валют
+	GetNotif              string = "GetNotif"                 // Получить свои оповещения
+	GetNotifId            string = GetNotif + "Id"            // Получить оповещение по ИД
+	GetNotifIdOn          string = GetNotifId + "On"          // Включить оповещение по ИД
+	GetNotifIdOff         string = GetNotifId + "Off"         // Отключить оповещение по ИД
+	GetNotifUp            string = GetNotif + Up              // Свои оповещения - Назад
+	GetNotifBack          string = GetNotif + Back            // Свои оповещения - Назад
+	GetNotifYet           string = GetNotif + Yet             // Свои оповещения - Вперед
+	GetNotifCrypto        string = GetNotif + Crypto          //
+	GetNotifCryptoYet     string = GetNotifCrypto + Yet       //
+	SetNotif              string = "SetNotif"                 // Установить уведомления по изменению цены криптовалюты
+	SetNotifCurr          string = SetNotif + Curr            // Выбор или ввод КВ для отслежнивания
+	SetNotifCryptoEnter   string = SetNotifCurr + "Enter"     // Ввод своей КВ
+	SetNotifCriterion     string = SetNotif + "Criterion"     //
+	SetNotifCriterionMore string = SetNotifCriterion + "More" //
+	SetNotifCriterionLess string = SetNotifCriterion + "Less" //
+	SetNotifPrice         string = SetNotif + Price           //
+	SetNotifPriceEnter    string = SetNotifPrice + Enter      //
+	SetNotifYes           string = SetNotif + "Yes"           //
+	SetNotifNo            string = SetNotif + "No"            //
 
 	Help   string = "help"
 	Crypto string = "Crypto"
@@ -39,8 +46,12 @@ const (
 	Up     string = "Up"
 )
 
+type FuncHandler func(*tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup)
+
 type tgBotMenu struct {
-	buttons *models.TreeNode
+	buttons  *models.TreeNode
+	function map[string]FuncHandler
+	Init     bool
 }
 
 var keyboardBot = initMenu()
@@ -52,30 +63,45 @@ type buttonInfo struct {
 
 func initMenu() *tgBotMenu {
 	buttons := models.InitTree()
-	buttons.Add(GetCrypto, "Узнать курс", "0", true)
+	// keyboardBot.Add(GetCrypto, "Узнать курс", "0", true, getCrypto)
+	// buttons.Add(GetCrypto, "Узнать курс", "0", true)
 	// buttons.Add(GetCryptoCurr, "Узнать курс валюты", GetCrypto, false)
-	// buttons.Add(GetCrypto, "Назад", GetCryptoCurr, true)
-	// buttons.Add(SetNotifCrypto, "Установить отслеживание", GetCryptoCurr, true)
-	buttons.Add(SetNotif, "Оповещения", "0", true)
-	buttons.Add(Start, "Назад", SetNotif, true)
-	buttons.Add(GetNotif, "Текущие", SetNotif, true)
-	buttons.Add(SetNotifCrypto, "Новое", SetNotif, true)
-	// buttons.Add(SetNotifCriterion, "Установить критерий", SetNotif, false)
-	buttons.Add(SetNotifPrice, "Установить цену", SetNotif, false)
-	buttons.Add(GetNotifBack, "Назад", GetNotif, true)
-	buttons.Add(GetNotifUp, "Оповещения", GetNotif, true)
-	buttons.Add(GetNotifYet, "Вперед", GetNotif, true)
-	buttons.Add(SetNotifPriceYes, "Да", SetNotifPrice, true)
-	buttons.Add(SetNotifPriceNo, "Нет", SetNotifPrice, true)
-	// buttons.Add(SetNotifCriterionMore, "Больше >=", SetNotifCriterion, true)
-	// buttons.Add(SetNotifCriterionLess, "Меньше <=", SetNotifCriterion, true)
-	buttons.Add(Help, "Справка", "0", true)
+	// buttons.Add(GetCryptoYet, "Дальше", GetCrypto, true)
+	// buttons.Add(SetNotif, "Оповещения", "0", true)
+	// buttons.Add(GetNotif, "Текущие", SetNotif, true)
+	// buttons.Add(GetNotifYet, "Дальше", GetNotif, false)
+	// buttons.Add(GetNotifId, "Получить отслеживание по ID", GetNotif, false)
+	// buttons.Add(GetNotifIdOn, "Отключить", GetNotifId, false)
+	// buttons.Add(GetNotifIdOff, "Включить", GetNotifId, false)
+	// buttons.Add(SetNotifCrypto, "Новое отслеживание", SetNotif, true)
+	// buttons.Add(SetNotifPrice, "Установить цену", SetNotifCrypto, true)
+	// buttons.Add(SetNotifPriceYes, "Да", SetNotifPrice, true)
+	// buttons.Add(SetNotifPriceNo, "Нет", SetNotifPrice, true)
+	// buttons.Add(Help, "Справка", "0", true)
 
 	menu := &tgBotMenu{
-		buttons: buttons,
+		buttons:  buttons,
+		function: make(map[string]FuncHandler),
 	}
+
 	return menu
 }
+
+func (tgm *tgBotMenu) Add(name, desc, parentId string, visible bool, foo ...FuncHandler) {
+	tgm.buttons.Add(name, desc, parentId, visible)
+	for _, v := range foo {
+		tgm.function[name] = v
+		break
+	}
+}
+
+func (tgm *tgBotMenu) GetFunc(name string) FuncHandler {
+	if _, ok := tgm.function[name]; !ok {
+		return nil
+	}
+	return tgm.function[name]
+}
+
 func (tgm *tgBotMenu) GetMainMenuReplyMarkup() (buttons []tgbotapi.KeyboardButton) {
 	nodes := tgm.buttons.GetNodeChild("0")
 	for _, v := range nodes {
@@ -96,8 +122,12 @@ func (tgm *tgBotMenu) GetMainMenuInlineMarkup() (buttons []tgbotapi.InlineKeyboa
 }
 
 func (tgm *tgBotMenu) GetMainMenuInlineMarkupFromNode(node string) (buttons []tgbotapi.InlineKeyboardButton) {
-	nodes := tgm.buttons.GetNodeChild(node)
-	for _, v := range nodes {
+	nodeParent := tgm.buttons.GetParentNode(node)
+	if nodeParent != nil {
+		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Назад", nodeParent.Name))
+	}
+	nodesChild := tgm.buttons.GetNodeChild(node)
+	for _, v := range nodesChild {
 		if v.Visible {
 			buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(v.Description, v.Name))
 		}
@@ -120,7 +150,7 @@ func MenuToInlineKeyboard(buttons []tgbotapi.InlineKeyboardButton, columns int) 
 	return keyboard
 }
 
-// Сделать кнопки для InlineKeyboard
+// Сделать кнопки для InlineKeyboard по имени узла
 func ConvertToButtonInlineKeyboard(in []buttonInfo, node string, column int) (keyboard tgbotapi.InlineKeyboardMarkup) {
 
 	var row []tgbotapi.InlineKeyboardButton
@@ -136,5 +166,10 @@ func ConvertToButtonInlineKeyboard(in []buttonInfo, node string, column int) (ke
 	nodeButtons := keyboardBot.GetMainMenuInlineMarkupFromNode(node)
 	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, nodeButtons)
 
+	return keyboard
+}
+func MenuToInlineFromNode(node string, column int) tgbotapi.InlineKeyboardMarkup {
+	buttons := keyboardBot.GetMainMenuInlineMarkupFromNode(node)
+	keyboard := MenuToInlineKeyboard(buttons, column)
 	return keyboard
 }
