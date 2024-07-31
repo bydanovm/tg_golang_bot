@@ -33,8 +33,8 @@ const (
 	SetNotifCriterionLess string = SetNotifCriterion + "Less" //
 	SetNotifPrice         string = SetNotif + Price           //
 	SetNotifPriceEnter    string = SetNotifPrice + Enter      //
-	SetNotifPriceYes      string = SetNotifPrice + "Yes"      //
-	SetNotifPriceNo       string = SetNotifPrice + "No"       //
+	SetNotifYes           string = SetNotif + "Yes"           //
+	SetNotifNo            string = SetNotif + "No"            //
 
 	Help   string = "help"
 	Crypto string = "Crypto"

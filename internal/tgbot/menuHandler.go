@@ -19,16 +19,18 @@ func menuHandler(update *tgbotapi.Update, bot tgbotapi.BotAPI) {
 	if !keyboardBot.Init {
 		keyboardBot.Add(Start, "Главная", "", true, funcMenuStart)
 		keyboardBot.Add(GetCrypto, "Узнать курс", Start, true, funcGetCrypto)
-		keyboardBot.Add(GetCryptoCurr, "Узнать курс валюты", GetCrypto, false, funcGetCryptoCurr)
+		keyboardBot.Add(GetCryptoCurr, "Узнать курс валюты (инв)", GetCrypto, false, funcGetCryptoCurr)
 		keyboardBot.Add(GetCryptoCurrSetNot, "Установить отслеживание", GetCryptoCurr, true)
 		keyboardBot.Add(GetCryptoNext, "Дальше", GetCrypto, true)
 		keyboardBot.Add(GetNotif, "Оповещения", Start, true, funcGetNotif)
 		keyboardBot.Add(GetNotifId, "Получить отслеживание по ID", GetNotif, false)
+		keyboardBot.Add(GetNotifIdOn, "Отключить", GetNotifId, true, funcGetNotifIdOn)
+		keyboardBot.Add(GetNotifIdOff, "Включить", GetNotifId, true, funcGetNotifIdOff)
 		keyboardBot.Add(SetNotif, "Новое отслеживание", GetNotif, true, funcSetNotif)
 		keyboardBot.Add(SetNotifPrice, "Установить цену", SetNotif, true, funcSetNotifPrice)
-		keyboardBot.Add(GetNotifIdOn, "Отключить", GetNotifId, true)
-		keyboardBot.Add(GetNotifIdOff, "Включить", GetNotifId, true)
-
+		keyboardBot.Add(SetNotifPriceEnter, "Цена введена - подтвердить (инв)", SetNotifPrice, false, funcSetNotifPriceEnter)
+		keyboardBot.Add(SetNotifNo, "Отменить", SetNotifPriceEnter, true, funcSetNotifNo)
+		keyboardBot.Add(SetNotifYes, "Подтвердить", SetNotifPriceEnter, true, funcSetNotifYes)
 		keyboardBot.Add(Help, "Справка", Start, true)
 
 		keyboardBot.Init = true
@@ -114,6 +116,14 @@ func funcGetNotif(update *tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarku
 	return ans, keyboard
 }
 
+func funcGetNotifIdOn(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+	return ans, keyboard
+}
+
+func funcGetNotifIdOff(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+	return ans, keyboard
+}
+
 func funcSetNotif(update *tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup) {
 	callBackData := strings.Split(update.CallbackQuery.Data, "_")
 	offset := 10
@@ -164,9 +174,24 @@ func funcSetNotifPrice(update *tgbotapi.Update) (string, tgbotapi.InlineKeyboard
 	for _, v := range prices {
 		price := fmt.Sprintf("%f", v.Price)
 		n := fmt.Sprintf(FormatFloatToString(v.Price)+" (%+d%%)", v.Price, v.Koeff)
-		listButtons = append(listButtons, buttonInfo{n, SetNotifPrice + `_` + price})
+		listButtons = append(listButtons, buttonInfo{n, SetNotifPriceEnter + `_` + price})
 	}
 	keyboard := ConvertToButtonInlineKeyboard(listButtons, callBackData[0], 3)
+
+	return ans, keyboard
+}
+
+func funcSetNotifPriceEnter(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+
+	return ans, keyboard
+}
+
+func funcSetNotifYes(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+
+	return ans, keyboard
+}
+
+func funcSetNotifNo(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
 
 	return ans, keyboard
 }
