@@ -7,11 +7,13 @@ type SetNotifCacheStruct struct {
 	Item SetNotifMap
 }
 type SetNotifStruct struct {
-	Crypto     string
-	Criterion  string
-	Price      float32
-	IdTracking int
-	IdCrypto   int
+	Crypto      string
+	Criterion   string
+	Price       float32
+	IdTracking  int
+	IdCrypto    int
+	OffsetNavi  int
+	CurrentMenu string
 }
 
 // Номер пользователя (чата) - структура

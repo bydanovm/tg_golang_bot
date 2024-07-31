@@ -33,6 +33,8 @@ const (
 	GetNotifCrypto                  string = GetNotif + Crypto          //
 	GetNotifCryptoYet               string = GetNotifCrypto + Yet       //
 	SetNotif                        string = "SetNotif"                 // Установить уведомления по изменению цены криптовалюты
+	SetNotifBack                    string = SetNotif + Back            //
+	SetNotifNext                    string = SetNotif + Next            //
 	SetNotifCurr                    string = SetNotif + Curr            // Выбор или ввод КВ для отслежнивания
 	SetNotifCryptoEnter             string = SetNotifCurr + "Enter"     // Ввод своей КВ
 	SetNotifCriterion               string = SetNotif + "Criterion"     //
@@ -51,16 +53,21 @@ const (
 	Enter  string = "Enter"
 	Yet    string = "Yet"
 	Back   string = "Back"
+	Next   string = "Next"
 	Curr   string = "Curr"
 	Up     string = "Up"
 )
 
 type FuncHandler func(*tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup)
-
+type keyboardFeature struct {
+	function  FuncHandler
+	multipage bool
+	visible   bool
+}
 type tgBotMenu struct {
-	buttons  *models.TreeNode
-	function map[string]FuncHandler
-	Init     bool
+	buttons *models.TreeNode
+	feature map[string]keyboardFeature
+	Init    bool
 }
 
 var keyboardBot = initMenu()
@@ -74,27 +81,46 @@ func initMenu() *tgBotMenu {
 	buttons := models.InitTree()
 
 	menu := &tgBotMenu{
-		buttons:  buttons,
-		function: make(map[string]FuncHandler),
+		buttons: buttons,
+		feature: make(map[string]keyboardFeature),
 	}
 
 	return menu
 }
 
-func (tgm *tgBotMenu) Add(name, desc, parentId string, visible bool, foo ...FuncHandler) {
-	tgm.buttons.Add(name, desc, parentId, visible)
+func (tgm *tgBotMenu) Add(name, desc, parentId string, visible bool, multipage bool, foo ...FuncHandler) {
+	tgm.buttons.Add(name, desc, parentId)
+	tgm.feature[name] = keyboardFeature{multipage: multipage, visible: visible}
 	for _, v := range foo {
-		tgm.function[name] = v
+		item, ok := tgm.feature[name]
+		if ok {
+			item.function = v
+			tgm.feature[name] = item
+		}
 		break
 	}
 }
 
 func (tgm *tgBotMenu) GetFunc(name string) FuncHandler {
-	if _, ok := tgm.function[name]; !ok {
+	if _, ok := tgm.feature[name]; !ok {
 		return nil
 	}
-	return tgm.function[name]
+	return tgm.feature[name].function
 }
+
+func (tgm *tgBotMenu) GetMultiPage(name string) bool {
+	if _, ok := tgm.feature[name]; !ok {
+		return false
+	}
+	return tgm.feature[name].multipage
+}
+
+// func (tgm *tgBotMenu) EditVisibleButton(name string) {
+// 	if item, ok := tgm.feature[name]; ok {
+// 		item.visible = !item.visible
+// 		tgm.feature[name] = item
+// 	}
+// }
 
 func (tgm *tgBotMenu) GetMainMenuReplyMarkup() (buttons []tgbotapi.KeyboardButton) {
 	nodes := tgm.buttons.GetNodeChild("0")
@@ -105,26 +131,32 @@ func (tgm *tgBotMenu) GetMainMenuReplyMarkup() (buttons []tgbotapi.KeyboardButto
 }
 
 // Получить меню для формата InlineKeyboardMarkup
-func (tgm *tgBotMenu) GetMainMenuInlineMarkup() (buttons []tgbotapi.InlineKeyboardButton) {
-	nodes := tgm.buttons.GetNodeChild("0")
-	for _, v := range nodes {
-		if v.Visible {
-			buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(v.Description, v.Name))
-		}
-	}
-	return buttons
-}
+// func (tgm *tgBotMenu) GetMainMenuInlineMarkup() (buttons []tgbotapi.InlineKeyboardButton) {
+// 	nodes := tgm.buttons.GetNodeChild("0")
+// 	for _, v := range nodes {
+// 		if item, ok := tgm.feature[name]; ok {
+// 			if item.Visible {
+// 				buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(v.Description, v.Name))
+// 			}
+// 		}
+// 	}
+// 	return buttons
+// }
 
 func (tgm *tgBotMenu) GetMainMenuInlineMarkupFromNode(node string) (buttons []tgbotapi.InlineKeyboardButton) {
-	nodesChild := tgm.buttons.GetNodeChild(node)
-	for _, v := range nodesChild {
-		if v.Visible {
-			buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(v.Description, v.Name))
+	if !tgm.GetMultiPage(node) {
+		nodeParent := tgm.buttons.GetParentNode(node)
+		if nodeParent != nil {
+			buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Назад", nodeParent.Name))
 		}
 	}
-	nodeParent := tgm.buttons.GetParentNode(node)
-	if nodeParent != nil {
-		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Назад", nodeParent.Name))
+	nodesChild := tgm.buttons.GetNodeChild(node)
+	for _, v := range nodesChild {
+		if item, ok := tgm.feature[v.Name]; ok {
+			if item.visible {
+				buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(v.Description, v.Name))
+			}
+		}
 	}
 	return buttons
 }

@@ -17,34 +17,38 @@ func menuHandler(update *tgbotapi.Update, bot tgbotapi.BotAPI) {
 
 	// Первичная инициализация меню хендлера
 	if !keyboardBot.Init {
-		keyboardBot.Add(Start, "Главная", "", true, funcMenuStart)
-		keyboardBot.Add(GetCrypto, "Узнать курс", Start, true, funcGetCrypto)
-		keyboardBot.Add(GetCryptoCurr, "Узнать курс валюты (инв)", GetCrypto, false, funcGetCryptoCurr)
+		keyboardBot.Add(Start, "Главная", "", true, false, funcMenuStart)
+		keyboardBot.Add(GetCrypto, "Узнать курс", Start, true, true, funcGetCrypto)
+		keyboardBot.Add(GetCryptoCurr, "Узнать курс валюты (инв)", GetCrypto, false, false, funcGetCryptoCurr)
 
-		keyboardBot.Add(GetCryptoCurrSetNotif, "Установить отслеживание", GetCryptoCurr, true, funcSetNotifPrice)
-		keyboardBot.Add(GetCryptoCurrSetNotifPriceEnter, "Цена введена - подтвердить (инв)", GetCryptoCurrSetNotif, false, funcSetNotifPriceEnter)
-		keyboardBot.Add(GetCryptoCurrSetNotifNo, "Отменить", GetCryptoCurrSetNotifPriceEnter, true, funcSetNotifNo)
-		keyboardBot.Add(GetCryptoCurrSetNotifNoOk, "Мои отслеживания", GetCryptoCurrSetNotifNo, true, funcGetNotif)
-		keyboardBot.Add(GetCryptoCurrSetNotifYes, "Подтвердить", GetCryptoCurrSetNotifPriceEnter, true, funcSetNotifYes)
-		keyboardBot.Add(GetCryptoCurrSetNotifYesOk, "Мои отслеживания", GetCryptoCurrSetNotifYes, true, funcGetNotif)
+		keyboardBot.Add(GetCryptoCurrSetNotif, "Установить отслеживание", GetCryptoCurr, true, false, funcSetNotifPrice)
+		keyboardBot.Add(GetCryptoCurrSetNotifPriceEnter, "Цена введена - подтвердить (инв)", GetCryptoCurrSetNotif, false, false, funcSetNotifPriceEnter)
+		keyboardBot.Add(GetCryptoCurrSetNotifNo, "Отменить", GetCryptoCurrSetNotifPriceEnter, true, false, funcSetNotifNo)
+		keyboardBot.Add(GetCryptoCurrSetNotifNoOk, "Мои отслеживания", GetCryptoCurrSetNotifNo, true, false, funcGetNotif)
+		keyboardBot.Add(GetCryptoCurrSetNotifYes, "Подтвердить", GetCryptoCurrSetNotifPriceEnter, true, false, funcSetNotifYes)
+		keyboardBot.Add(GetCryptoCurrSetNotifYesOk, "Мои отслеживания", GetCryptoCurrSetNotifYes, true, false, funcGetNotif)
 
-		keyboardBot.Add(GetCryptoNext, "Дальше", GetCrypto, true)
-		keyboardBot.Add(GetNotif, "Отслеживания", Start, true, funcGetNotif)
-		keyboardBot.Add(GetNotifId, "Получить отслеживание по ID", GetNotif, false, funcGetNotifId)
-		keyboardBot.Add(GetNotifIdOn, "Включить", GetNotifId, true, funcGetNotifIdOn)
-		keyboardBot.Add(GetNotifIdOnOk, "Мои отслеживания", GetNotifIdOn, true, funcGetNotif)
-		keyboardBot.Add(GetNotifIdOff, "Отключить", GetNotifId, true, funcGetNotifIdOff)
-		keyboardBot.Add(GetNotifIdOffOk, "Мои отслеживания", GetNotifIdOff, true, funcGetNotif)
+		keyboardBot.Add(GetCryptoBack, "Назад", GetCrypto, true, false, funcGetCrypto)
+		keyboardBot.Add(GetCryptoNext, "Дальше", GetCrypto, true, false, funcGetCrypto)
+		keyboardBot.Add(GetNotif, "Отслеживания", Start, true, false, funcGetNotif)
+		keyboardBot.Add(GetNotifId, "Получить отслеживание по ID", GetNotif, false, false, funcGetNotifId)
+		keyboardBot.Add(GetNotifIdOn, "Включить", GetNotifId, true, false, funcGetNotifIdOn)
+		keyboardBot.Add(GetNotifIdOnOk, "Мои отслеживания", GetNotifIdOn, true, false, funcGetNotif)
+		keyboardBot.Add(GetNotifIdOff, "Отключить", GetNotifId, true, false, funcGetNotifIdOff)
+		keyboardBot.Add(GetNotifIdOffOk, "Мои отслеживания", GetNotifIdOff, true, false, funcGetNotif)
 
-		keyboardBot.Add(SetNotif, "Новое отслеживание", GetNotif, true, funcSetNotif)
-		keyboardBot.Add(SetNotifPrice, "Установить цену", SetNotif, false, funcSetNotifPrice)
-		keyboardBot.Add(SetNotifPriceEnter, "Цена введена - подтвердить (инв)", SetNotifPrice, false, funcSetNotifPriceEnter)
-		keyboardBot.Add(SetNotifNo, "Отменить", SetNotifPriceEnter, true, funcSetNotifNo)
-		keyboardBot.Add(SetNotifNoOk, "Мои отслеживания", SetNotifNo, true, funcGetNotif)
-		keyboardBot.Add(SetNotifYes, "Подтвердить", SetNotifPriceEnter, true, funcSetNotifYes)
-		keyboardBot.Add(SetNotifYesOk, "Мои отслеживания", SetNotifYes, true, funcGetNotif)
+		keyboardBot.Add(SetNotif, "Новое отслеживание", GetNotif, true, true, funcSetNotif)
+		keyboardBot.Add(SetNotifBack, "Назад", SetNotif, true, false, funcSetNotif)
+		keyboardBot.Add(SetNotifNext, "Дальше", SetNotif, true, false, funcSetNotif)
 
-		keyboardBot.Add(Help, "Справка", Start, true)
+		keyboardBot.Add(SetNotifPrice, "Установить цену", SetNotif, false, false, funcSetNotifPrice)
+		keyboardBot.Add(SetNotifPriceEnter, "Цена введена - подтвердить (инв)", SetNotifPrice, false, false, funcSetNotifPriceEnter)
+		keyboardBot.Add(SetNotifNo, "Отменить", SetNotifPriceEnter, true, false, funcSetNotifNo)
+		keyboardBot.Add(SetNotifNoOk, "Мои отслеживания", SetNotifNo, true, false, funcGetNotif)
+		keyboardBot.Add(SetNotifYes, "Подтвердить", SetNotifPriceEnter, true, false, funcSetNotifYes)
+		keyboardBot.Add(SetNotifYesOk, "Мои отслеживания", SetNotifYes, true, false, funcGetNotif)
+
+		keyboardBot.Add(Help, "Справка", Start, true, false)
 
 		keyboardBot.Init = true
 	}
@@ -85,16 +89,50 @@ func menuHandler(update *tgbotapi.Update, bot tgbotapi.BotAPI) {
 	}
 }
 
-func funcGetCrypto(update *tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup) {
-	ans := ChooseGetCrypto
+func funcGetCrypto(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+	// Вычислим offset по значению из кеша
 	offset := 10
+	userInfo := FindUserIdFromUpdate(update)
+	// Вызов может поступить из другого пункта меню, проверяем наличие в кеше
+	menuCache, _ := caching.GetCacheByIdxInMap(MenuCache, userInfo.IdUsr, 0)
+	// if err != nil {
+	// 	return ans, keyboard
+	// }
+	if menuCache.OffsetNavi > 10 {
+		offset = menuCache.OffsetNavi
+	}
 	callBackData := strings.Split(update.CallbackQuery.Data, "_")
-	listCryptoCur, _, _ := caching.GetCacheOffset(caching.CryptoCache, offset)
+
+	// Обработка кнопок Назад/Вперед
+	if callBackData[0] == GetCryptoNext { // Сработала кнопка дальше, запись значения в кеш
+		callBackData[0] = keyboardBot.buttons.GetParentNode(callBackData[0]).Name
+		offset += 10
+	} else if callBackData[0] == GetCryptoBack { // Сработала кнопка назад
+		callBackData[0] = keyboardBot.buttons.GetParentNode(callBackData[0]).Name
+		if offset > 10 {
+			offset -= 10
+		} else {
+			callBackData[0] = keyboardBot.buttons.GetParentNode(callBackData[0]).Name
+			pfunc := keyboardBot.GetFunc(callBackData[0])
+			if pfunc != nil {
+				ans, keyboard = pfunc(update)
+				return ans, keyboard
+			}
+		}
+	}
+	caching.SetCache(MenuCache, userInfo.IdUsr, SetNotifStruct{OffsetNavi: offset}, 0)
+
+	listCryptoCur, lastList, _ := caching.GetCacheOffset(caching.CryptoCache, offset)
+	if lastList {
+		offset -= 10
+		caching.SetCache(MenuCache, userInfo.IdUsr, SetNotifStruct{OffsetNavi: offset}, 0)
+	}
 	listButtons := make([]buttonInfo, 0, 10)
 	for _, v := range listCryptoCur {
 		listButtons = append(listButtons, buttonInfo{v.CryptoName, GetCryptoCurr + `_` + strconv.Itoa(v.CryptoId)})
 	}
-	keyboard := ConvertToButtonInlineKeyboard(listButtons, callBackData[0], 3)
+	ans = ChooseGetCrypto
+	keyboard = ConvertToButtonInlineKeyboard(listButtons, callBackData[0], 3)
 	return ans, keyboard
 }
 
@@ -103,20 +141,6 @@ func funcGetCryptoCurr(update *tgbotapi.Update) (ans string, keyboard tgbotapi.I
 	if err != nil {
 		return ans, keyboard
 	}
-	// callBackData := strings.Split(update.CallbackQuery.Data, "_")
-	// if len(callBackData) < 2 {
-	// 	userInfo := FindUserIdFromUpdate(update)
-	// 	// Вызов может поступить из другого пункта меню, проверяем наличие в кеше
-	// 	menuCache, err := caching.GetCacheByIdxInMap(MenuCache, userInfo.IdUsr, 0)
-	// 	if err != nil {
-	// 		return ans, keyboard
-	// 	}
-	// 	if menuCache.IdCrypto != 0 {
-	// 		callBackData = append(callBackData, strconv.Itoa(menuCache.IdCrypto))
-	// 	} else {
-	// 		return ans, keyboard
-	// 	}
-	// }
 
 	id, err := strconv.Atoi(callBackData[1])
 	if err != nil {
@@ -131,9 +155,9 @@ func funcGetCryptoCurr(update *tgbotapi.Update) (ans string, keyboard tgbotapi.I
 
 	userInfo := FindUserIdFromUpdate(update)
 	// Запись в кеш для дальнейших операций
-	caching.SetCache(MenuCache, userInfo.IdUsr, SetNotifStruct{
-		IdCrypto: crypto.CryptoId,
-	}, 0)
+	menuCache, _ := caching.GetCacheByIdxInMap(MenuCache, userInfo.IdUsr, 0)
+	menuCache.IdCrypto = crypto.CryptoId
+	caching.SetCache(MenuCache, userInfo.IdUsr, menuCache, 0)
 
 	ans = fmt.Sprintf("1 %s = "+FormatFloatToString(crypto.CryptoLastPrice)+" %s",
 		crypto.CryptoName,
@@ -144,7 +168,7 @@ func funcGetCryptoCurr(update *tgbotapi.Update) (ans string, keyboard tgbotapi.I
 }
 
 func funcGetNotif(update *tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup) {
-	ans := "Текущие оповещения"
+	ans := "Текущие отслеживания"
 	// Вывести от новых к старым в формате Валюта - Значение
 	trackings, _ := caching.GetCacheRecordsKeyChain(caching.TrackingCache, update.CallbackQuery.From.ID, true)
 	// Создание списка кнопок
@@ -205,8 +229,38 @@ func funcSetNotif(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inline
 	if len(callBackData) < 1 {
 		return ans, keyboard
 	}
+
 	offset := 10
 	ans = ChooseGetCrypto
+
+	userInfo := FindUserIdFromUpdate(update)
+	// Вызов может поступить из другого пункта меню, проверяем наличие в кеше
+	menuCache, _ := caching.GetCacheByIdxInMap(MenuCache, userInfo.IdUsr, 0)
+	// if err != nil {
+	// 	return ans, keyboard
+	// }
+	if menuCache.OffsetNavi > 10 {
+		offset = menuCache.OffsetNavi
+	}
+
+	// Обработка кнопок Назад/Вперед
+	if callBackData[0] == SetNotifNext { // Сработала кнопка дальше, запись значения в кеш
+		callBackData[0] = keyboardBot.buttons.GetParentNode(callBackData[0]).Name
+		offset += 10
+	} else if callBackData[0] == SetNotifBack { // Сработала кнопка назад
+		callBackData[0] = keyboardBot.buttons.GetParentNode(callBackData[0]).Name
+		if offset > 10 {
+			offset -= 10
+		} else {
+			callBackData[0] = keyboardBot.buttons.GetParentNode(callBackData[0]).Name
+			pfunc := keyboardBot.GetFunc(callBackData[0])
+			if pfunc != nil {
+				ans, keyboard = pfunc(update)
+				return ans, keyboard
+			}
+		}
+	}
+	caching.SetCache(MenuCache, userInfo.IdUsr, SetNotifStruct{OffsetNavi: offset}, 0)
 
 	listCryptoCur, _, _ := caching.GetCacheOffset(caching.CryptoCache, offset)
 	listButtons := make([]buttonInfo, 0, 10)
@@ -222,20 +276,6 @@ func funcSetNotifPrice(update *tgbotapi.Update) (ans string, keyboard tgbotapi.I
 	if err != nil {
 		return ans, keyboard
 	}
-	// callBackData := strings.Split(update.CallbackQuery.Data, "_")
-	// if len(callBackData) < 2 {
-	// 	userInfo := FindUserIdFromUpdate(update)
-	// 	// Вызов может поступить из другого пункта меню, проверяем наличие в кеше
-	// 	menuCache, err := caching.GetCacheByIdxInMap(MenuCache, userInfo.IdUsr, 0)
-	// 	if err != nil {
-	// 		return ans, keyboard
-	// 	}
-	// 	if menuCache.IdCrypto != 0 {
-	// 		callBackData = append(callBackData, strconv.Itoa(menuCache.IdCrypto))
-	// 	} else {
-	// 		return ans, keyboard
-	// 	}
-	// }
 
 	// Возможно переключить на пакет caching
 	// Пишем в кеш крипту
