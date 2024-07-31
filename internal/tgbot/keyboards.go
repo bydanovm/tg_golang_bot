@@ -7,34 +7,43 @@ import (
 
 const (
 	// Comands
-	Start                 string = "start"                    // Начало
-	NumberOfUsers         string = "number_of_users"          // Получить количество активных пользователей
-	GetCrypto             string = "GetCrypto"                // Получить актуальную информацию по криптовалюте
-	GetCryptoEnter        string = GetCrypto + Enter          // Ручной ввод КВ
-	GetCryptoNext         string = GetCrypto + "Next"         // Следующая страница
-	GetCryptoBack         string = GetCrypto + "Back"         // Предыдушщая страница / выход
-	GetCryptoCurr         string = GetCrypto + Curr           // Узнать курса валюты
-	GetCryptoCurrBack     string = GetCryptoCurr + "Back"     // Выход из курса валюты
-	GetCryptoCurrSetNot   string = GetCryptoCurr + SetNotif   // Установить отслеживание из курса валют
-	GetNotif              string = "GetNotif"                 // Получить свои оповещения
-	GetNotifId            string = GetNotif + "Id"            // Получить оповещение по ИД
-	GetNotifIdOn          string = GetNotifId + "On"          // Включить оповещение по ИД
-	GetNotifIdOff         string = GetNotifId + "Off"         // Отключить оповещение по ИД
-	GetNotifUp            string = GetNotif + Up              // Свои оповещения - Назад
-	GetNotifBack          string = GetNotif + Back            // Свои оповещения - Назад
-	GetNotifYet           string = GetNotif + Yet             // Свои оповещения - Вперед
-	GetNotifCrypto        string = GetNotif + Crypto          //
-	GetNotifCryptoYet     string = GetNotifCrypto + Yet       //
-	SetNotif              string = "SetNotif"                 // Установить уведомления по изменению цены криптовалюты
-	SetNotifCurr          string = SetNotif + Curr            // Выбор или ввод КВ для отслежнивания
-	SetNotifCryptoEnter   string = SetNotifCurr + "Enter"     // Ввод своей КВ
-	SetNotifCriterion     string = SetNotif + "Criterion"     //
-	SetNotifCriterionMore string = SetNotifCriterion + "More" //
-	SetNotifCriterionLess string = SetNotifCriterion + "Less" //
-	SetNotifPrice         string = SetNotif + Price           //
-	SetNotifPriceEnter    string = SetNotifPrice + Enter      //
-	SetNotifYes           string = SetNotif + "Yes"           //
-	SetNotifNo            string = SetNotif + "No"            //
+	Start                           string = "start"                  // Начало
+	NumberOfUsers                   string = "number_of_users"        // Получить количество активных пользователей
+	GetCrypto                       string = "GetCrypto"              // Получить актуальную информацию по криптовалюте
+	GetCryptoEnter                  string = GetCrypto + Enter        // Ручной ввод КВ
+	GetCryptoNext                   string = GetCrypto + "Next"       // Следующая страница
+	GetCryptoBack                   string = GetCrypto + "Back"       // Предыдушщая страница / выход
+	GetCryptoCurr                   string = GetCrypto + Curr         // Узнать курса валюты
+	GetCryptoCurrBack               string = GetCryptoCurr + "Back"   // Выход из курса валюты
+	GetCryptoCurrSetNotif           string = GetCryptoCurr + SetNotif // Установить отслеживание из курса валют
+	GetCryptoCurrSetNotifPriceEnter string = GetCryptoCurr + SetNotifPriceEnter
+	GetCryptoCurrSetNotifNo         string = GetCryptoCurr + SetNotifNo
+	GetCryptoCurrSetNotifNoOk       string = GetCryptoCurr + SetNotifNoOk
+	GetCryptoCurrSetNotifYes        string = GetCryptoCurr + SetNotifYes
+	GetCryptoCurrSetNotifYesOk      string = GetCryptoCurr + SetNotifYesOk
+	GetNotif                        string = "GetNotif"                 // Получить свои оповещения
+	GetNotifId                      string = GetNotif + "Id"            // Получить оповещение по ИД
+	GetNotifIdOn                    string = GetNotifId + "On"          // Включить оповещение по ИД
+	GetNotifIdOnOk                  string = GetNotifIdOn + "Ok"        //
+	GetNotifIdOff                   string = GetNotifId + "Off"         // Отключить оповещение по ИД
+	GetNotifIdOffOk                 string = GetNotifIdOff + "Ok"       //
+	GetNotifUp                      string = GetNotif + Up              // Свои оповещения - Назад
+	GetNotifBack                    string = GetNotif + Back            // Свои оповещения - Назад
+	GetNotifYet                     string = GetNotif + Yet             // Свои оповещения - Вперед
+	GetNotifCrypto                  string = GetNotif + Crypto          //
+	GetNotifCryptoYet               string = GetNotifCrypto + Yet       //
+	SetNotif                        string = "SetNotif"                 // Установить уведомления по изменению цены криптовалюты
+	SetNotifCurr                    string = SetNotif + Curr            // Выбор или ввод КВ для отслежнивания
+	SetNotifCryptoEnter             string = SetNotifCurr + "Enter"     // Ввод своей КВ
+	SetNotifCriterion               string = SetNotif + "Criterion"     //
+	SetNotifCriterionMore           string = SetNotifCriterion + "More" //
+	SetNotifCriterionLess           string = SetNotifCriterion + "Less" //
+	SetNotifPrice                   string = SetNotif + Price           //
+	SetNotifPriceEnter              string = SetNotifPrice + Enter      //
+	SetNotifYes                     string = SetNotif + "Yes"           //
+	SetNotifYesOk                   string = SetNotifYes + "Ok"         //
+	SetNotifNo                      string = SetNotif + "No"            //
+	SetNotifNoOk                    string = SetNotifNo + "Ok"          //
 
 	Help   string = "help"
 	Crypto string = "Crypto"
@@ -63,21 +72,6 @@ type buttonInfo struct {
 
 func initMenu() *tgBotMenu {
 	buttons := models.InitTree()
-	// keyboardBot.Add(GetCrypto, "Узнать курс", "0", true, getCrypto)
-	// buttons.Add(GetCrypto, "Узнать курс", "0", true)
-	// buttons.Add(GetCryptoCurr, "Узнать курс валюты", GetCrypto, false)
-	// buttons.Add(GetCryptoYet, "Дальше", GetCrypto, true)
-	// buttons.Add(SetNotif, "Оповещения", "0", true)
-	// buttons.Add(GetNotif, "Текущие", SetNotif, true)
-	// buttons.Add(GetNotifYet, "Дальше", GetNotif, false)
-	// buttons.Add(GetNotifId, "Получить отслеживание по ID", GetNotif, false)
-	// buttons.Add(GetNotifIdOn, "Отключить", GetNotifId, false)
-	// buttons.Add(GetNotifIdOff, "Включить", GetNotifId, false)
-	// buttons.Add(SetNotifCrypto, "Новое отслеживание", SetNotif, true)
-	// buttons.Add(SetNotifPrice, "Установить цену", SetNotifCrypto, true)
-	// buttons.Add(SetNotifPriceYes, "Да", SetNotifPrice, true)
-	// buttons.Add(SetNotifPriceNo, "Нет", SetNotifPrice, true)
-	// buttons.Add(Help, "Справка", "0", true)
 
 	menu := &tgBotMenu{
 		buttons:  buttons,
@@ -122,15 +116,15 @@ func (tgm *tgBotMenu) GetMainMenuInlineMarkup() (buttons []tgbotapi.InlineKeyboa
 }
 
 func (tgm *tgBotMenu) GetMainMenuInlineMarkupFromNode(node string) (buttons []tgbotapi.InlineKeyboardButton) {
-	nodeParent := tgm.buttons.GetParentNode(node)
-	if nodeParent != nil {
-		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Назад", nodeParent.Name))
-	}
 	nodesChild := tgm.buttons.GetNodeChild(node)
 	for _, v := range nodesChild {
 		if v.Visible {
 			buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(v.Description, v.Name))
 		}
+	}
+	nodeParent := tgm.buttons.GetParentNode(node)
+	if nodeParent != nil {
+		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Назад", nodeParent.Name))
 	}
 	return buttons
 }

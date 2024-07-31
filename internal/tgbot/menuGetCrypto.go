@@ -7,6 +7,10 @@ import (
 const (
 	ChooseGetCrypto string = "Выберите или введите криптовалюту"
 	EnterGetCrypto  string = "Введите криптовалюту"
+	сGetNotifIdOn   string = "Отслеживание включено"
+	сGetNotifIdOff  string = "Отслеживания отключено"
+	// сGetNotifIdOn   string = "Отслеживание успешно сохранено"
+	// сGetNotifIdOff  string = "Создание отслеживания отменено"
 )
 
 func menuGetCrypto(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg interface{}) {
