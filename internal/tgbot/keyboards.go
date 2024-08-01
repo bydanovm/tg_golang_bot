@@ -56,6 +56,9 @@ const (
 	Next   string = "Next"
 	Curr   string = "Curr"
 	Up     string = "Up"
+
+	FirstList int = 999
+	LastList  int = 1000
 )
 
 type FuncHandler func(*tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup)
@@ -143,8 +146,14 @@ func (tgm *tgBotMenu) GetMainMenuReplyMarkup() (buttons []tgbotapi.KeyboardButto
 // 	return buttons
 // }
 
-func (tgm *tgBotMenu) GetMainMenuInlineMarkupFromNode(node string) (buttons []tgbotapi.InlineKeyboardButton) {
-	if !tgm.GetMultiPage(node) {
+func (tgm *tgBotMenu) GetMainMenuInlineMarkupFromNode(node string, mode ...int) (buttons []tgbotapi.InlineKeyboardButton) {
+	var isMode int
+	for _, v := range mode {
+		isMode = v
+		break
+	}
+	isMultiPage := tgm.GetMultiPage(node)
+	if !isMultiPage {
 		nodeParent := tgm.buttons.GetParentNode(node)
 		if nodeParent != nil {
 			buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Назад", nodeParent.Name))
@@ -154,7 +163,9 @@ func (tgm *tgBotMenu) GetMainMenuInlineMarkupFromNode(node string) (buttons []tg
 	for _, v := range nodesChild {
 		if item, ok := tgm.feature[v.Name]; ok {
 			if item.visible {
-				buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(v.Description, v.Name))
+				if !(isMode == LastList && v.Description == "Дальше") {
+					buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(v.Description, v.Name))
+				}
 			}
 		}
 	}
@@ -177,9 +188,10 @@ func MenuToInlineKeyboard(buttons []tgbotapi.InlineKeyboardButton, columns int) 
 }
 
 // Сделать кнопки для InlineKeyboard по имени узла
-func ConvertToButtonInlineKeyboard(in []buttonInfo, node string, column int) (keyboard tgbotapi.InlineKeyboardMarkup) {
+func ConvertToButtonInlineKeyboard(in []buttonInfo, node string, column int, mode ...int) (keyboard tgbotapi.InlineKeyboardMarkup) {
 
 	var row []tgbotapi.InlineKeyboardButton
+	var modeIs int
 	for k, v := range in {
 		btn := tgbotapi.NewInlineKeyboardButtonData(v.text, v.data)
 		row = append(row, btn)
@@ -189,7 +201,11 @@ func ConvertToButtonInlineKeyboard(in []buttonInfo, node string, column int) (ke
 			row = nil
 		}
 	}
-	nodeButtons := keyboardBot.GetMainMenuInlineMarkupFromNode(node)
+	for _, v := range mode {
+		modeIs = v
+		break
+	}
+	nodeButtons := keyboardBot.GetMainMenuInlineMarkupFromNode(node, modeIs)
 	keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, nodeButtons)
 
 	return keyboard

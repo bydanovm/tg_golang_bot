@@ -90,6 +90,7 @@ func menuHandler(update *tgbotapi.Update, bot tgbotapi.BotAPI) {
 }
 
 func funcGetCrypto(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+	var isMode int
 	// Вычислим offset по значению из кеша
 	offset := 10
 	userInfo := FindUserIdFromUpdate(update)
@@ -124,15 +125,14 @@ func funcGetCrypto(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inlin
 
 	listCryptoCur, lastList, _ := caching.GetCacheOffset(caching.CryptoCache, offset)
 	if lastList {
-		offset -= 10
-		caching.SetCache(MenuCache, userInfo.IdUsr, SetNotifStruct{OffsetNavi: offset}, 0)
+		isMode = LastList
 	}
 	listButtons := make([]buttonInfo, 0, 10)
 	for _, v := range listCryptoCur {
 		listButtons = append(listButtons, buttonInfo{v.CryptoName, GetCryptoCurr + `_` + strconv.Itoa(v.CryptoId)})
 	}
 	ans = ChooseGetCrypto
-	keyboard = ConvertToButtonInlineKeyboard(listButtons, callBackData[0], 3)
+	keyboard = ConvertToButtonInlineKeyboard(listButtons, callBackData[0], 3, isMode)
 	return ans, keyboard
 }
 
