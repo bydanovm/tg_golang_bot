@@ -18,9 +18,9 @@ const (
 	GetCryptoCurrSetNotif           string = GetCryptoCurr + SetNotif // Установить отслеживание из курса валют
 	GetCryptoCurrSetNotifPriceEnter string = GetCryptoCurr + SetNotifPriceEnter
 	GetCryptoCurrSetNotifNo         string = GetCryptoCurr + SetNotifNo
-	GetCryptoCurrSetNotifNoOk       string = GetCryptoCurr + SetNotifNoOk
+	GetCryptoCurrSetNotifNoOk       string = GetCryptoCurr + SetNotifNoMyNotif
 	GetCryptoCurrSetNotifYes        string = GetCryptoCurr + SetNotifYes
-	GetCryptoCurrSetNotifYesOk      string = GetCryptoCurr + SetNotifYesOk
+	GetCryptoCurrSetNotifYesOk      string = GetCryptoCurr + SetNotifNoNewNotif
 	GetNotif                        string = "GetNotif"                 // Получить свои оповещения
 	GetNotifId                      string = GetNotif + "Id"            // Получить оповещение по ИД
 	GetNotifIdOn                    string = GetNotifId + "On"          // Включить оповещение по ИД
@@ -43,9 +43,10 @@ const (
 	SetNotifPrice                   string = SetNotif + Price           //
 	SetNotifPriceEnter              string = SetNotifPrice + Enter      //
 	SetNotifYes                     string = SetNotif + "Yes"           //
-	SetNotifYesOk                   string = SetNotifYes + "Ok"         //
+	SetNotifYesMyNotif              string = SetNotifYes + "MyNotif"    //
 	SetNotifNo                      string = SetNotif + "No"            //
-	SetNotifNoOk                    string = SetNotifNo + "Ok"          //
+	SetNotifNoMyNotif               string = SetNotifNo + "MyNotif"     //
+	SetNotifNoNewNotif              string = SetNotifNo + "NewNotif"    //
 
 	Help   string = "help"
 	Crypto string = "Crypto"

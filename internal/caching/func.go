@@ -128,6 +128,10 @@ func GetCacheKeyChain[T iCacheble](link iCacher[T], in interface{}) []interface{
 	return link.GetKeyChain(in)
 }
 
+func GetCacheElementKeyChain[T iCacheble](link iCacher[T], in interface{}) interface{} {
+	return link.GetKeyChain(in)[0]
+}
+
 // Возврат записей по связке ключей map[FK][]PK с возможностью сортировки
 func GetCacheRecordsKeyChain[T iCacheble](link iCacher[T], in interface{}, sorting bool) (out []T, err error) {
 	// Сортируем полученные ключи

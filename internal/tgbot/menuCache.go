@@ -7,13 +7,15 @@ type SetNotifCacheStruct struct {
 	Item SetNotifMap
 }
 type SetNotifStruct struct {
-	Crypto      string
-	Criterion   string
-	Price       float32
-	IdTracking  int
-	IdCrypto    int
-	OffsetNavi  int
-	CurrentMenu string
+	Crypto       string
+	Criterion    string
+	Price        float32
+	CurrentPrice float32
+	IdTracking   int
+	IdCrypto     int
+	IdCriterion  int
+	OffsetNavi   int
+	CurrentMenu  string
 }
 
 // Номер пользователя (чата) - структура
@@ -62,16 +64,36 @@ func (uc *SetNotifCacheStruct) SetCrypto(idUsr int, crypto string) {
 	}
 }
 
-func (uc *SetNotifCacheStruct) SetCriterion(idUsr int, criterion string) {
+func (uc *SetNotifCacheStruct) SetCriterion(idUsr int, criterion int) {
 	isRLock := uc.URLockU()
 	if _, ok := uc.Item[idUsr]; !ok {
 		isRLock = uc.URUnlock()
 		uc.mu.Lock()
-		uc.Item[idUsr] = SetNotifStruct{Criterion: criterion}
+		uc.Item[idUsr] = SetNotifStruct{IdCriterion: criterion}
 		uc.mu.Unlock()
 	} else {
 		item := uc.Item[idUsr]
-		item.Criterion = criterion
+		item.IdCriterion = criterion
+		isRLock = uc.URUnlock()
+		uc.mu.Lock()
+		uc.Item[idUsr] = item
+		uc.mu.Unlock()
+	}
+	if isRLock {
+		uc.mu.RUnlock()
+	}
+}
+
+func (uc *SetNotifCacheStruct) SetCurrentPrice(idUsr int, price float32) {
+	isRLock := uc.URLockU()
+	if _, ok := uc.Item[idUsr]; !ok {
+		isRLock = uc.URUnlock()
+		uc.mu.Lock()
+		uc.Item[idUsr] = SetNotifStruct{CurrentPrice: price}
+		uc.mu.Unlock()
+	} else {
+		item := uc.Item[idUsr]
+		item.CurrentPrice = price
 		isRLock = uc.URUnlock()
 		uc.mu.Lock()
 		uc.Item[idUsr] = item
@@ -111,13 +133,22 @@ func (uc *SetNotifCacheStruct) GetCrypto(idUsr int) (crypto string) {
 	return crypto
 }
 
-func (uc *SetNotifCacheStruct) GetCriterion(idUsr int) (criterion string) {
+func (uc *SetNotifCacheStruct) GetCriterion(idUsr int) (criterion int) {
 	uc.mu.RLock()
 	defer uc.mu.RUnlock()
 	if v, ok := uc.Item[idUsr]; ok {
-		criterion = v.Criterion
+		criterion = v.IdCriterion
 	}
 	return criterion
+}
+
+func (uc *SetNotifCacheStruct) GetCurrentPrice(idUsr int) (price float32) {
+	uc.mu.RLock()
+	defer uc.mu.RUnlock()
+	if v, ok := uc.Item[idUsr]; ok {
+		price = v.CurrentPrice
+	}
+	return price
 }
 
 func (uc *SetNotifCacheStruct) GetPrice(idUsr int) (price float32) {
