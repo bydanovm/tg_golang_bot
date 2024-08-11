@@ -3,9 +3,9 @@ package notifications
 import (
 	"fmt"
 
+	"github.com/mbydanov/tg_golang_bot/internal/caching"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
-	"github.com/mitchellh/mapstructure"
 )
 
 func RunNotification(
@@ -17,7 +17,7 @@ func RunNotification(
 			// Прием ответа от ретривера
 			if v.Module == models.RetrieverCoins && v.Start {
 				// Функция работы с уведомлениями по КВ
-				if res, err := notificationsCC(database.DCCache); err != nil {
+				if res, err := notificationsCC(); err != nil {
 					// Запись в канал об ошибке
 					v.Error = err
 				} else if res != nil {
@@ -44,32 +44,36 @@ func RunNotification(
 // 4 - ИД КВ
 // 5 - Имя КВ
 // 6 - Событие
-func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
+func notificationsCC() (interface{}, error) {
 	notifCCStruct := []NotificationsCCStruct{}
 
-	for _, subRs := range database.TCCache {
-		subFields := database.TrackingCrypto{}
-		mapstructure.Decode(subRs, &subFields)
+	// Считываем по 100 элементов из кеша отслеживаний
+	// Может быть считать по пользователям (меньше суемся в кеш пользователей)?
+	trackings, _, err := caching.GetCacheOffset(caching.TrackingCache, 100)
+	if err != nil {
+		return nil, fmt.Errorf("notificationsCC:" + err.Error())
+	}
+
+	for _, tracking := range trackings {
 		// Отсеиваем не активные отслеживания
-		if !subFields.OnTrkCrp {
+		if !tracking.OnTrkCrp {
 			continue
 		}
 
-		dictCryptos := database.DictCrypto{}
-		v, ok := bufferForNotif.(database.DictCryptoCache)
-		if !ok {
-			return nil, fmt.Errorf("notificationsCC:error convert interface to map[int]interface")
+		// Получить из кеша данные по криптовалюте
+		currency, err := caching.GetCacheByIdxInMap(caching.CryptoCache, tracking.DctCrpId)
+		if err != nil {
+			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
-		mapstructure.Decode(v[subFields.DctCrpId], &dictCryptos)
 
 		// Получаем информацию о типе отслеживания
-		typeInfo, err := database.TypeTCCache.GetCache(subFields.TypTrkCrpId)
+		typeInfo, err := database.TypeTCCache.GetCache(tracking.TypTrkCrpId)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
 
 		// Узнаем разность
-		diff := dictCryptos.CryptoLastPrice - subFields.ValTrkCrp
+		diff := currency.CryptoLastPrice - tracking.ValTrkCrp
 		if diff >= 0 && typeInfo.RisingTypTrkCrp { // Поднялась на N под пунктов (пп)
 			// Какая-то проверка
 		} else if diff < 0 && !typeInfo.RisingTypTrkCrp { // Опустилась на N под пунктов (пп)
@@ -80,7 +84,7 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 		}
 
 		// Получаем лимит в соответствии с отслеживанием и увеличиваем его
-		lmt := database.LmtCache[subFields.LmtId]
+		lmt := database.LmtCache[tracking.LmtId]
 		avalLmt, err := lmt.IncrLimit(1)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
@@ -88,46 +92,35 @@ func notificationsCC(bufferForNotif interface{}) (interface{}, error) {
 
 		// Если лимит будет исчерпан, отключаем отслеживание
 		if avalLmt == 0 {
-			if err := subFields.OffTracking(); err != nil {
+			if err := tracking.OffTracking(); err != nil {
 				return nil, fmt.Errorf("notificationsCC:" + err.Error())
 			}
 		}
 
 		// Кешируем пользователя
-		if err := database.UsersCache.CheckCache(subFields.UserId); err != nil {
-			return nil, fmt.Errorf("notificationsCC:" + err.Error())
-		}
-
-		// Получаем имя юзера
-		userName := database.UsersCache.GetUserName(subFields.UserId)
-		if err != nil {
-			return nil, fmt.Errorf("notificationsCC:" + err.Error())
-		}
-
-		// Получаем номер чата с пользователем
-		chatIdUsr := database.UsersCache.GetChatId(subFields.UserId)
+		user, err := caching.GetCacheByIdxInMap(caching.UsersCache, tracking.UserId)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
 
 		notifCCStruct = append(notifCCStruct, NotificationsCCStruct{
-			subFields.UserId,
-			userName,
-			chatIdUsr,
-			subFields.DctCrpId,
-			dictCryptos.CryptoName,
+			tracking.UserId,
+			user.NameUsr,
+			user.ChatIdUsr,
+			tracking.DctCrpId,
+			currency.CryptoName,
 			fmt.Sprintf("Произошло событие над криптовалютой %s:\n"+
 				typeInfo.DescTypTrkCrp+
 				" на %.3fUSD\nОсталось уведомлений для данного события: %v",
-				dictCryptos.CryptoName, subFields.ValTrkCrp, "USD", diff, avalLmt),
+				currency.CryptoName, tracking.ValTrkCrp, "USD", diff, avalLmt),
 		})
 		if avalLmt == 0 {
 			notifCCStruct = append(notifCCStruct, NotificationsCCStruct{
-				subFields.UserId,
-				userName,
-				chatIdUsr,
-				subFields.DctCrpId,
-				dictCryptos.CryptoName,
+				tracking.UserId,
+				user.NameUsr,
+				user.ChatIdUsr,
+				tracking.DctCrpId,
+				currency.CryptoName,
 				fmt.Sprint("Вы можете продлить, изменить и продлить данное отслеживание" +
 					" или создать новое отслеживание"),
 			})

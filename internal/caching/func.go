@@ -73,7 +73,7 @@ func CheckCacheAndWrite[T iCacheble](link iCacher[T], k int, object T) (retObjec
 }
 
 // Функция наполнения кеша из БД
-func FillCache[T iCacheble](link iCacher[T], records int, offset int) error {
+func FillCache[T iCacheble](link iCacher[T], records int, offset ...int) error {
 
 	structType := &Item[T]{}
 	structType.value = make([]T, 1)
@@ -115,10 +115,14 @@ func GetCacheKeyByIdx[T iCacheble](link iCacher[T], key int) int {
 }
 
 // Возврат idx элемента слайса из мапы по ключу k
-func GetCacheByIdxInMap[T iCacheble](link iCacher[T], k int, idx int) (res T, err error) {
-	object, ok := link.GetByIdxInMap(k, idx)
+func GetCacheByIdxInMap[T iCacheble](link iCacher[T], k int, idx ...int) (res T, err error) {
+	var idxE int = 0
+	for _, v := range idx {
+		idxE = v
+	}
+	object, ok := link.GetByIdxInMap(k, idxE)
 	if !ok {
-		err = fmt.Errorf("GetCacheByIdxInMap:key:%d:idx:%d:Cache:%t", k, idx, link)
+		err = fmt.Errorf("GetCacheByIdxInMap:key:%d:idx:%d:Cache:%t", k, idxE, link)
 	}
 	return object, err
 }

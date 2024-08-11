@@ -26,15 +26,12 @@ func RunRetrieverCoins(
 	timeout := 600
 	var modeluInfo models.StatusChannel
 	for {
-		if res, err := retrieverCoins(); err != nil {
-			modeluInfo.Error = err
-			modeluInfo.Update = true
-		} else {
-			// Передача данных в нотификатор
-			modeluInfo.Start = true
-			modeluInfo.Data = res
-			modeluInfo.Update = true
-		}
+		res, err := retrieverCoins()
+		modeluInfo.Start = true
+		modeluInfo.Data = res
+		modeluInfo.Error = err
+		modeluInfo.Update = true
+
 		if modeluInfo.Update {
 			modeluInfo.Module = models.RetrieverCoins
 			chanModules <- modeluInfo

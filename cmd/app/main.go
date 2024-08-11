@@ -35,10 +35,12 @@ func main() {
 	// Получение настроек
 	// go config.GetConfig(chConfig)
 	// Кешировние
+	// Кеширование пользователей
+	caching.FillCache(caching.UsersCache, 100)
 	// Кешируем словарь криптовалют
-	caching.FillCache(caching.CryptoCache, 100, 0)
+	caching.FillCache(caching.CryptoCache, 100)
 	// Кешируем отслеживания
-	caching.FillCache(caching.TrackingCache, 100, 0)
+	caching.FillCache(caching.TrackingCache, 100)
 	if err := database.DCCache.CheckAllCache(); err != nil {
 		services.Logging.Panic(fmt.Errorf("main:" + err.Error()))
 	}
