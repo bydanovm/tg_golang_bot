@@ -31,9 +31,9 @@ func menuHandler(update *tgbotapi.Update, bot tgbotapi.BotAPI) {
 		keyboardBot.Add(GetCryptoNext, "Дальше", GetCrypto, KeyboardSettings{visible: true, multipage: false}, funcGetCrypto)
 		keyboardBot.Add(GetNotif, "Отслеживания", Start, KeyboardSettings{visible: true, multipage: false}, funcGetNotif)
 		keyboardBot.Add(GetNotifId, "Получить отслеживание по ID", GetNotif, KeyboardSettings{visible: false, multipage: false}, funcGetNotifId)
-		keyboardBot.Add(GetNotifIdOn, "Включить", GetNotifId, KeyboardSettings{visible: true, multipage: false}, funcGetNotifIdOn)
+		keyboardBot.Add(GetNotifIdOn, "Включить", GetNotifId, KeyboardSettings{visible: false, multipage: false, homeBack: true}, funcGetNotifIdOn)
 		keyboardBot.Add(GetNotifIdOnOk, "Мои отслеживания", GetNotifIdOn, KeyboardSettings{visible: true, multipage: false}, funcGetNotif)
-		keyboardBot.Add(GetNotifIdOff, "Отключить", GetNotifId, KeyboardSettings{visible: true, multipage: false}, funcGetNotifIdOff)
+		keyboardBot.Add(GetNotifIdOff, "Отключить", GetNotifId, KeyboardSettings{visible: false, multipage: false, homeBack: true}, funcGetNotifIdOff)
 		keyboardBot.Add(GetNotifIdOffOk, "Мои отслеживания", GetNotifIdOff, KeyboardSettings{visible: true, multipage: false}, funcGetNotif)
 
 		keyboardBot.Add(SetNotif, "Новое отслеживание", GetNotif, KeyboardSettings{visible: true, multipage: true}, funcSetNotif)
