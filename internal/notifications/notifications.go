@@ -72,6 +72,12 @@ func notificationsCC() (interface{}, error) {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
 
+		// Кешируем пользователя заранее, чтобы не было очистки кеша
+		user, err := caching.GetCacheByIdxInMap(caching.UsersCache, tracking.UserId)
+		if err != nil {
+			return nil, fmt.Errorf("notificationsCC:" + err.Error())
+		}
+
 		// Узнаем разность
 		diff := currency.CryptoLastPrice - tracking.ValTrkCrp
 		if diff >= 0 && typeInfo.RisingTypTrkCrp { // Поднялась на N под пунктов (пп)
@@ -95,12 +101,6 @@ func notificationsCC() (interface{}, error) {
 			if err := tracking.OffTracking(); err != nil {
 				return nil, fmt.Errorf("notificationsCC:" + err.Error())
 			}
-		}
-
-		// Кешируем пользователя
-		user, err := caching.GetCacheByIdxInMap(caching.UsersCache, tracking.UserId)
-		if err != nil {
-			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
 
 		notifCCStruct = append(notifCCStruct, NotificationsCCStruct{

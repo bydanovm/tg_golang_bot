@@ -58,34 +58,52 @@ func (uc *Cache[T]) URUnlock() (isRLock bool) {
 
 // Получение существующей записи
 func (uc *Cache[T]) Get(k int) (res []T, ok bool) {
-	uc.mu.RLock()
-	defer uc.mu.RUnlock()
+	isRlock := uc.URLockU()
 	v, ok := uc.items[k]
 
 	if ok {
 		// Не бессрочный И Время жизни не вышло ИЛИ Бессрочный
 		if v.expiration > 0 && time.Now().UnixNano() < v.expiration || v.expiration == 0 {
 			res = v.value
+			// Обновить время жизни
+			v.expiration = time.Now().Add(uc.defaultExpiration).UnixNano()
+			isRlock = uc.URUnlock()
+			uc.mu.Lock()
+			uc.items[k] = v
+			uc.mu.Unlock()
 		} else {
 			ok = false
 		}
+	}
+
+	if isRlock {
+		uc.mu.RUnlock()
 	}
 
 	return res, ok
 }
 
 func (uc *Cache[T]) GetByIdxInMap(k int, idx int) (res T, ok bool) {
-	uc.mu.RLock()
-	defer uc.mu.RUnlock()
+	isRlock := uc.URLockU()
 	v, ok := uc.items[k]
 
 	if ok {
 		// Не бессрочный И Время жизни не вышло ИЛИ Бессрочный
 		if v.expiration > 0 && time.Now().UnixNano() < v.expiration || v.expiration == 0 {
 			res = v.value[idx]
+			// Обновить время жизни
+			v.expiration = time.Now().Add(uc.defaultExpiration).UnixNano()
+			isRlock = uc.URUnlock()
+			uc.mu.Lock()
+			uc.items[k] = v
+			uc.mu.Unlock()
 		} else {
 			ok = false
 		}
+	}
+
+	if isRlock {
+		uc.mu.RUnlock()
 	}
 
 	return res, ok
