@@ -65,6 +65,7 @@ func FindUserIdFromUpdate(update *tgbotapi.Update) (userInfo UserInfo) {
 	return userInfo
 }
 
+// Функция проверки передачи информации между функциями, при необходимости достает информацию из менюкеша
 func checkCallbackData(update *tgbotapi.Update, size int) ([]string, error) {
 	callBackData := strings.Split(update.CallbackQuery.Data, "_")
 	if len(callBackData) < size {

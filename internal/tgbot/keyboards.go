@@ -64,9 +64,12 @@ const (
 
 type FuncHandler func(*tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup)
 type keyboardFeature struct {
-	function  FuncHandler
-	multipage bool
+	KeyboardSettings
+	function FuncHandler
+}
+type KeyboardSettings struct {
 	visible   bool
+	multipage bool
 }
 type tgBotMenu struct {
 	buttons *models.TreeNode
@@ -92,9 +95,14 @@ func initMenu() *tgBotMenu {
 	return menu
 }
 
-func (tgm *tgBotMenu) Add(name, desc, parentId string, visible bool, multipage bool, foo ...FuncHandler) {
+func (tgm *tgBotMenu) Add(name, desc, parentId string, settings KeyboardSettings, foo ...FuncHandler) {
 	tgm.buttons.Add(name, desc, parentId)
-	tgm.feature[name] = keyboardFeature{multipage: multipage, visible: visible}
+	tgm.feature[name] = keyboardFeature{
+		KeyboardSettings: KeyboardSettings{
+			settings.visible,
+			settings.multipage,
+		}}
+
 	for _, v := range foo {
 		item, ok := tgm.feature[name]
 		if ok {

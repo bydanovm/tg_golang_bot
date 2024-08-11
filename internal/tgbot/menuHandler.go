@@ -16,39 +16,39 @@ func menuHandler(update *tgbotapi.Update, bot tgbotapi.BotAPI) {
 
 	// Первичная инициализация меню хендлера
 	if !keyboardBot.Init {
-		keyboardBot.Add(Start, "Главная", "", true, false, funcMenuStart)
-		keyboardBot.Add(GetCrypto, "Узнать курс", Start, true, true, funcGetCrypto)
-		keyboardBot.Add(GetCryptoCurr, "Узнать курс валюты (инв)", GetCrypto, false, false, funcGetCryptoCurr)
+		keyboardBot.Add(Start, "Главная", "", KeyboardSettings{visible: true, multipage: false}, funcMenuStart)
+		keyboardBot.Add(GetCrypto, "Узнать курс", Start, KeyboardSettings{visible: true, multipage: true}, funcGetCrypto)
+		keyboardBot.Add(GetCryptoCurr, "Узнать курс валюты (инв)", GetCrypto, KeyboardSettings{visible: false, multipage: false}, funcGetCryptoCurr)
 
-		keyboardBot.Add(GetCryptoCurrSetNotif, "Установить отслеживание", GetCryptoCurr, true, false, funcSetNotifPrice)
-		keyboardBot.Add(GetCryptoCurrSetNotifPriceEnter, "Цена введена - подтвердить (инв)", GetCryptoCurrSetNotif, false, false, funcSetNotifPriceEnter)
-		keyboardBot.Add(GetCryptoCurrSetNotifNo, "Отменить", GetCryptoCurrSetNotifPriceEnter, true, false, funcSetNotifNo)
-		keyboardBot.Add(GetCryptoCurrSetNotifNoOk, "Мои отслеживания", GetCryptoCurrSetNotifNo, true, false, funcGetNotif)
-		keyboardBot.Add(GetCryptoCurrSetNotifYes, "Подтвердить", GetCryptoCurrSetNotifPriceEnter, true, false, funcSetNotifYes)
-		keyboardBot.Add(GetCryptoCurrSetNotifYesOk, "Мои отслеживания", GetCryptoCurrSetNotifYes, true, false, funcGetNotif)
+		keyboardBot.Add(GetCryptoCurrSetNotif, "Установить отслеживание", GetCryptoCurr, KeyboardSettings{visible: true, multipage: false}, funcSetNotifPrice)
+		keyboardBot.Add(GetCryptoCurrSetNotifPriceEnter, "Цена введена - подтвердить (инв)", GetCryptoCurrSetNotif, KeyboardSettings{visible: false, multipage: false}, funcSetNotifPriceEnter)
+		keyboardBot.Add(GetCryptoCurrSetNotifNo, "Отменить", GetCryptoCurrSetNotifPriceEnter, KeyboardSettings{visible: true, multipage: false}, funcSetNotifNo)
+		keyboardBot.Add(GetCryptoCurrSetNotifNoOk, "Мои отслеживания", GetCryptoCurrSetNotifNo, KeyboardSettings{visible: true, multipage: false}, funcGetNotif)
+		keyboardBot.Add(GetCryptoCurrSetNotifYes, "Подтвердить", GetCryptoCurrSetNotifPriceEnter, KeyboardSettings{visible: true, multipage: false}, funcSetNotifYes)
+		keyboardBot.Add(GetCryptoCurrSetNotifYesOk, "Мои отслеживания", GetCryptoCurrSetNotifYes, KeyboardSettings{visible: true, multipage: false}, funcGetNotif)
 
-		keyboardBot.Add(GetCryptoBack, "Назад", GetCrypto, true, false, funcGetCrypto)
-		keyboardBot.Add(GetCryptoNext, "Дальше", GetCrypto, true, false, funcGetCrypto)
-		keyboardBot.Add(GetNotif, "Отслеживания", Start, true, false, funcGetNotif)
-		keyboardBot.Add(GetNotifId, "Получить отслеживание по ID", GetNotif, false, false, funcGetNotifId)
-		keyboardBot.Add(GetNotifIdOn, "Включить", GetNotifId, true, false, funcGetNotifIdOn)
-		keyboardBot.Add(GetNotifIdOnOk, "Мои отслеживания", GetNotifIdOn, true, false, funcGetNotif)
-		keyboardBot.Add(GetNotifIdOff, "Отключить", GetNotifId, true, false, funcGetNotifIdOff)
-		keyboardBot.Add(GetNotifIdOffOk, "Мои отслеживания", GetNotifIdOff, true, false, funcGetNotif)
+		keyboardBot.Add(GetCryptoBack, "Назад", GetCrypto, KeyboardSettings{visible: true, multipage: false}, funcGetCrypto)
+		keyboardBot.Add(GetCryptoNext, "Дальше", GetCrypto, KeyboardSettings{visible: true, multipage: false}, funcGetCrypto)
+		keyboardBot.Add(GetNotif, "Отслеживания", Start, KeyboardSettings{visible: true, multipage: false}, funcGetNotif)
+		keyboardBot.Add(GetNotifId, "Получить отслеживание по ID", GetNotif, KeyboardSettings{visible: false, multipage: false}, funcGetNotifId)
+		keyboardBot.Add(GetNotifIdOn, "Включить", GetNotifId, KeyboardSettings{visible: true, multipage: false}, funcGetNotifIdOn)
+		keyboardBot.Add(GetNotifIdOnOk, "Мои отслеживания", GetNotifIdOn, KeyboardSettings{visible: true, multipage: false}, funcGetNotif)
+		keyboardBot.Add(GetNotifIdOff, "Отключить", GetNotifId, KeyboardSettings{visible: true, multipage: false}, funcGetNotifIdOff)
+		keyboardBot.Add(GetNotifIdOffOk, "Мои отслеживания", GetNotifIdOff, KeyboardSettings{visible: true, multipage: false}, funcGetNotif)
 
-		keyboardBot.Add(SetNotif, "Новое отслеживание", GetNotif, true, true, funcSetNotif)
-		keyboardBot.Add(SetNotifBack, "Назад", SetNotif, true, false, funcSetNotif)
-		keyboardBot.Add(SetNotifNext, "Дальше", SetNotif, true, false, funcSetNotif)
+		keyboardBot.Add(SetNotif, "Новое отслеживание", GetNotif, KeyboardSettings{visible: true, multipage: true}, funcSetNotif)
+		keyboardBot.Add(SetNotifBack, "Назад", SetNotif, KeyboardSettings{visible: true, multipage: false}, funcSetNotif)
+		keyboardBot.Add(SetNotifNext, "Дальше", SetNotif, KeyboardSettings{visible: true, multipage: false}, funcSetNotif)
 
-		keyboardBot.Add(SetNotifPrice, "Установить цену", SetNotif, false, false, funcSetNotifPrice)
-		keyboardBot.Add(SetNotifPriceEnter, "Цена введена - подтвердить (инв)", SetNotifPrice, false, false, funcSetNotifPriceEnter)
-		keyboardBot.Add(SetNotifNo, "Отменить", SetNotifPriceEnter, true, false, funcSetNotifNo)
-		keyboardBot.Add(SetNotifNoMyNotif, "Мои отслеживания", SetNotifNo, true, false, funcGetNotif)
-		keyboardBot.Add(SetNotifNoNewNotif, "Новое отслеживание", SetNotifNo, true, true, funcSetNotif)
-		keyboardBot.Add(SetNotifYes, "Подтвердить", SetNotifPriceEnter, true, false, funcSetNotifYes)
-		keyboardBot.Add(SetNotifYesMyNotif, "Мои отслеживания", SetNotifYes, true, false, funcGetNotif)
+		keyboardBot.Add(SetNotifPrice, "Установить цену", SetNotif, KeyboardSettings{visible: false, multipage: false}, funcSetNotifPrice)
+		keyboardBot.Add(SetNotifPriceEnter, "Цена введена - подтвердить (инв)", SetNotifPrice, KeyboardSettings{visible: false, multipage: false}, funcSetNotifPriceEnter)
+		keyboardBot.Add(SetNotifNo, "Отменить", SetNotifPriceEnter, KeyboardSettings{visible: true, multipage: false}, funcSetNotifNo)
+		keyboardBot.Add(SetNotifNoMyNotif, "Мои отслеживания", SetNotifNo, KeyboardSettings{visible: true, multipage: false}, funcGetNotif)
+		keyboardBot.Add(SetNotifNoNewNotif, "Новое отслеживание", SetNotifNo, KeyboardSettings{visible: true, multipage: true}, funcSetNotif)
+		keyboardBot.Add(SetNotifYes, "Подтвердить", SetNotifPriceEnter, KeyboardSettings{visible: true, multipage: false}, funcSetNotifYes)
+		keyboardBot.Add(SetNotifYesMyNotif, "Мои отслеживания", SetNotifYes, KeyboardSettings{visible: true, multipage: false}, funcGetNotif)
 
-		keyboardBot.Add(Help, "Справка", Start, true, false)
+		keyboardBot.Add(Help, "Справка", Start, KeyboardSettings{visible: true, multipage: false})
 
 		keyboardBot.Init = true
 	}
@@ -328,7 +328,10 @@ func funcSetNotifPriceEnter(update *tgbotapi.Update) (ans string, keyboard tgbot
 	}
 
 	// Запись в кеш выбранной цены
-	n, _ := strconv.ParseFloat(callBackData[1], 32)
+	n, err := strconv.ParseFloat(callBackData[1], 32)
+	if err != nil {
+		return ans, keyboard
+	}
 	SetNotifCh.SetPrice(int(update.CallbackQuery.Message.Chat.ID), float32(n))
 
 	// Определяем и записываем критерий (тип триггера)
@@ -359,12 +362,6 @@ func funcSetNotifYes(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inl
 	// Считывание из кеша всего объекта
 	setNotif := SetNotifCh.GetObject(int(update.CallbackQuery.Message.Chat.ID))
 
-	// Нажата ДА на последнем этапе, возврат в начало
-	// Определить КВ по мнемонике
-	// idCrpt, err := caching.GetCacheRecordsKeyChain(caching.CryptoCache, setNotif.Crypto, true)
-	// if idCrpt[0].CryptoId == 0 || err != nil {
-	// 	ans += fmt.Sprintf("Криптовалюта %s не найдена.\nИсправьте команду и повторите запрос\n", SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID)))
-	// }
 	// Найти Тип отслеживания
 	idType := setNotif.IdCriterion
 	// Установка лимита
@@ -396,6 +393,7 @@ func funcSetNotifYes(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inl
 	} else {
 		ans += fmt.Sprintf("Отслеживание по криптовалюте %s успешно добавлено\n", SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID)))
 	}
+	// Запись в кеш
 	keyboard = MenuToInlineFromNode(callBackData[0], 2)
 
 	return ans, keyboard
