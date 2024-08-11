@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 )
@@ -40,6 +41,23 @@ func WriteRecord[T any](in []byte) ([]byte, error) {
 	buffer, err := models.MarshalJSON(data)
 	if err != nil {
 		return nil, fmt.Errorf("WriteRecord:" + err.Error())
+	}
+	return buffer, nil
+}
+func UpdateRecord[T any](in []byte) ([]byte, error) {
+	// Десереализация
+	data, err := models.UnmarshalJSON[T](in)
+	if err != nil {
+		return nil, fmt.Errorf("UpdateRecord:" + err.Error())
+	}
+	// Запись в БД
+	if err := updateDataT(data); err != nil {
+		return nil, fmt.Errorf("UpdateRecord:" + err.Error())
+	}
+	// Сериализация обратно
+	buffer, err := models.MarshalJSON(data)
+	if err != nil {
+		return nil, fmt.Errorf("UpdateRecord:" + err.Error())
 	}
 	return buffer, nil
 }
@@ -103,6 +121,53 @@ func writeDataT[T any](in T) error {
 	//Выполняем наш SQL запрос
 	if _, err = db.Exec(data); err != nil {
 		return fmt.Errorf("WriteData:" + data + ":" + err.Error())
+	}
+
+	return nil
+}
+
+func updateDataT[T any](in T) error {
+
+	// Определяем информацию по структуре
+	structInfo := models.StructInfo{}
+	if err := structInfo.GetFieldInfo(in); err != nil {
+		return err
+	}
+
+	// Получаем PK
+	fieldInfo, err := structInfo.GetPrimaryKey()
+	if err != nil {
+		return fmt.Errorf("updateDataT:" + err.Error())
+	}
+
+	// Создаем SQL запрос
+	data := `UPDATE ` + structInfo.StructName + ` SET `
+	for _, value := range structInfo.StructFieldInfo {
+		data += value.StructNameFields + " = '" + fmt.Sprintf("%v",
+			func(in interface{}) (out interface{}) {
+				switch inConv := in.(type) {
+				case time.Time:
+					out, _ = models.ConvertDateTimeToMSK(inConv)
+				default:
+					out = inConv
+				}
+				return out
+			}(value.StructValue)) + "', "
+	}
+	data = data[:len(data)-2] + " WHERE "
+
+	data += fieldInfo.StructNameFields + ` = '` + fmt.Sprintf("%v", fieldInfo.StructValue) + `';`
+
+	//Подключаемся к БД
+	db, err := sql.Open("postgres", dbInfo)
+	if err != nil {
+		return fmt.Errorf("updateDataT:" + sqlConErr + ":" + err.Error())
+	}
+	defer db.Close()
+
+	//Выполняем наш SQL запрос
+	if _, err = db.Exec(data); err != nil {
+		return fmt.Errorf("updateDataT:" + data + ":" + err.Error())
 	}
 
 	return nil

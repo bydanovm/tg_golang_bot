@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
-	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 )
 
@@ -49,7 +48,7 @@ func notificationsCC() (interface{}, error) {
 
 	// Считываем по 100 элементов из кеша отслеживаний
 	// Может быть считать по пользователям (меньше суемся в кеш пользователей)?
-	trackings, _, err := caching.GetCacheOffset(caching.TrackingCache, 100)
+	trackings, err := caching.GetCacheAllRecord(caching.TrackingCache)
 	if err != nil {
 		return nil, fmt.Errorf("notificationsCC:" + err.Error())
 	}
@@ -67,7 +66,13 @@ func notificationsCC() (interface{}, error) {
 		}
 
 		// Получаем информацию о типе отслеживания
-		typeInfo, err := database.TypeTCCache.GetCache(tracking.TypTrkCrpId)
+		typeInfo, err := caching.GetCacheByIdxInMap(caching.TrackingTypeCache, tracking.TypTrkCrpId)
+		if err != nil {
+			return nil, fmt.Errorf("notificationsCC:" + err.Error())
+		}
+
+		// Получаем лимиты
+		lmt, err := caching.GetCacheByIdxInMap(caching.Limits, tracking.LmtId)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
@@ -89,16 +94,19 @@ func notificationsCC() (interface{}, error) {
 			continue
 		}
 
-		// Получаем лимит в соответствии с отслеживанием и увеличиваем его
-		lmt := database.LmtCache[tracking.LmtId]
-		avalLmt, err := lmt.IncrLimit(1)
+		// Увеличиваем использованные лимиты и обновляем в кеше/бд
+		lmt.ValUsedLmt++
+		lmt, err = caching.UpdateCacheRecord(caching.Limits, lmt.IdLmt, lmt)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
 
 		// Если лимит будет исчерпан, отключаем отслеживание
+		avalLmt := lmt.ValAvailLmt - lmt.ValUsedLmt
 		if avalLmt == 0 {
-			if err := tracking.OffTracking(); err != nil {
+			tracking.OnTrkCrp = false
+			tracking, err = caching.UpdateCacheRecord(caching.TrackingCache, tracking.IdTrkCrp, tracking)
+			if err != nil {
 				return nil, fmt.Errorf("notificationsCC:" + err.Error())
 			}
 		}

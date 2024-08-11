@@ -13,6 +13,7 @@ type iCacher[T any] interface {
 	GetKeyChain(in interface{}) []interface{}
 	Set(int, T, time.Duration)
 	Add(int, T)
+	Update(k int, val T)
 	Delete(int)
 	Pop(int)
 	DropByIdx(int, int)

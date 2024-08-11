@@ -22,6 +22,10 @@ func SetCache[T iCacheble](link iCacher[T], k int, object T, duration time.Durat
 	link.Set(k, object, duration)
 }
 
+func UpdateCache[T iCacheble](link iCacher[T], k int, object T) {
+	link.Update(k, object)
+}
+
 // Проверка и получение первого объекта
 func CheckCacheAndWrite[T iCacheble](link iCacher[T], k int, object T) (retObject T, err error) {
 	// Первая проверка, если в кеше есть - возращаем обьект
@@ -115,6 +119,7 @@ func GetCacheKeyByIdx[T iCacheble](link iCacher[T], key int) int {
 }
 
 // Возврат idx элемента слайса из мапы по ключу k
+// idx по умолчанию равен 0 елементу
 func GetCacheByIdxInMap[T iCacheble](link iCacher[T], k int, idx ...int) (res T, err error) {
 	var idxE int = 0
 	for _, v := range idx {
@@ -178,8 +183,15 @@ func GetCacheRecordsKeyChain[T iCacheble](link iCacher[T], in interface{}, sorti
 	return out, err
 }
 
-// Возврат 10 элементов мапы с offset отсортированному по ключу
-func GetCacheOffset[T iCacheble](link iCacher[T], offset int) (out []T, last bool, err error) {
+// Возврат n элементов мапы с offset отсортированному по ключу
+func GetCacheOffset[T iCacheble](link iCacher[T], offset int, recordCnt ...int) (out []T, last bool, err error) {
+	// Стандартно возвращаем по 10 записей
+	var recordCntV int = 10
+	for _, v := range recordCnt {
+		recordCntV = v
+		break
+	}
+
 	countRecord := GetCacheCountRecord(link)
 	if offset < 10 {
 		return nil, false, fmt.Errorf("GetCacheOffset:Offset is small")
@@ -189,7 +201,7 @@ func GetCacheOffset[T iCacheble](link iCacher[T], offset int) (out []T, last boo
 	}
 
 	if countRecord > 1 {
-		for i := offset - 10; i < offset; i++ {
+		for i := offset - recordCntV; i < offset; i++ {
 			key := GetCacheKeyByIdx(link, i)
 			object, err := GetCacheByIdxInMap(link, key, 0)
 			if err != nil {
@@ -202,4 +214,79 @@ func GetCacheOffset[T iCacheble](link iCacher[T], offset int) (out []T, last boo
 	}
 
 	return out, last, err
+}
+
+// Возврат всех элементов мапы отсортированному по ключу
+func GetCacheAllRecord[T iCacheble](link iCacher[T]) (out []T, err error) {
+	countRecord := GetCacheCountRecord(link)
+
+	if countRecord > 1 {
+		for i := 0; i < countRecord; i++ {
+			key := GetCacheKeyByIdx(link, i)
+			object, err := GetCacheByIdxInMap(link, key, 0)
+			if err != nil {
+				return out, fmt.Errorf("GetCacheAllRecord:" + err.Error())
+			}
+			out = append(out, object)
+		}
+	} else {
+		return out, fmt.Errorf("GetCacheAllRecord:Len cache is zero")
+	}
+
+	return out, err
+
+}
+
+// Обновление записи
+func UpdateCacheRecord[T iCacheble](link iCacher[T], k int, object T) (retObject T, err error) {
+	// Проверка на существование объекта
+	retObject, err = GetCacheByIdxInMap(link, k)
+	if err != nil {
+		return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
+	}
+
+	// Сериализация для отправки
+	buffer, err := models.MarshalJSON(object)
+	if err != nil {
+		return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
+	}
+
+	// Проверка наличия в БД
+	result, err := database.CheckRecord[T](buffer)
+	if err != nil {
+		if strings.Contains(err.Error(), "NoRows") {
+			// Запись в БД и возврат ответного тела
+			result, err = database.WriteRecord[T](buffer)
+			if err != nil {
+				return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
+			}
+		} else {
+			return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
+		}
+	} else {
+		// Обновление в БД и возврат ответного тела
+		result, err = database.UpdateRecord[T](buffer)
+		if err != nil {
+			return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
+		}
+	}
+
+	// Десереализация для обновления в кеше
+	data, err := models.UnmarshalJSON[T](result)
+	if err != nil {
+		return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
+	}
+
+	// Обновление в кеше
+	UpdateCache(link, k, data)
+
+	// Считываем повторно из кеша
+	retObject, err = GetCacheByIdxInMap(link, k)
+	if err != nil {
+		return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
+	}
+
+	// Нужна ли проверка на консистентность?
+
+	return retObject, err
 }

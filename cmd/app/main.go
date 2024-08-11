@@ -38,9 +38,14 @@ func main() {
 	// Кеширование пользователей
 	caching.FillCache(caching.UsersCache, 100)
 	// Кешируем словарь криптовалют
-	caching.FillCache(caching.CryptoCache, 100)
+	caching.FillCache(caching.CryptoCache, 1000)
 	// Кешируем отслеживания
-	caching.FillCache(caching.TrackingCache, 100)
+	caching.FillCache(caching.TrackingCache, 10000)
+	// Кешируем типы отслеживаний
+	caching.FillCache(caching.TrackingTypeCache, 10)
+	// Кешируем лимиты
+	caching.FillCache(caching.Limits, 100)
+
 	if err := database.DCCache.CheckAllCache(); err != nil {
 		services.Logging.Panic(fmt.Errorf("main:" + err.Error()))
 	}

@@ -15,6 +15,10 @@ var CryptoCache = Init[database.DictCrypto](time.Hour*24, time.Hour*12)
 
 var TrackingCache = Init[database.TrackingCrypto](time.Hour*24, time.Hour*12)
 
+var TrackingTypeCache = Init[database.TypeTrackingCrypto](time.Hour*24*365, 0)
+
+var Limits = Init[database.Limits](time.Hour*24, time.Hour*12)
+
 type Item[T iCacheble] struct {
 	value      []T
 	created    time.Time
@@ -171,6 +175,22 @@ func (uc *Cache[T]) Add(k int, val T) {
 		uc.mu.Lock()
 		defer uc.mu.Unlock()
 		item.value = append(item.value, val)
+		uc.items[k] = item
+	}
+}
+
+// Обновление записи в кеше
+func (uc *Cache[T]) Update(k int, val T) {
+	uc.mu.RLock()
+	item, ok := uc.items[k]
+	uc.mu.RUnlock()
+	if ok {
+		uc.mu.Lock()
+		defer uc.mu.Unlock()
+		item.expiration = time.Now().Add(uc.defaultExpiration).UnixNano()
+		valT := []T{}
+		valT = append(valT, val)
+		item.value = valT
 		uc.items[k] = item
 	}
 }

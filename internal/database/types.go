@@ -306,7 +306,7 @@ func (l *Limits) IncrLimit(valIncr int) (int, error) {
 }
 
 type TypeTrackingCrypto struct {
-	IdTypTrkCrp       int    `sql_type:"SERIAL PRIMARY KEY"`
+	IdTypTrkCrp       int    `sql_type:"SERIAL PRIMARY KEY" pkey:"YES"`
 	NameTypeTrkCrp    string `sql_type:"TEXT NOT NULL UNIQUE"`
 	DescTypTrkCrp     string `sql_type:"TEXT NOT NULL"`
 	RisingTypTrkCrp   bool   `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
