@@ -78,3 +78,7 @@ func (tr *TreeNode) GetParentNode(name string) *Node {
 	}
 	return node.Parent
 }
+
+func (tr *TreeNode) GetRootNode() *Node {
+	return tr.root
+}

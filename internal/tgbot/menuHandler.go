@@ -42,10 +42,10 @@ func menuHandler(update *tgbotapi.Update, bot tgbotapi.BotAPI) {
 
 		keyboardBot.Add(SetNotifPrice, "Установить цену", SetNotif, KeyboardSettings{visible: false, multipage: false}, funcSetNotifPrice)
 		keyboardBot.Add(SetNotifPriceEnter, "Цена введена - подтвердить (инв)", SetNotifPrice, KeyboardSettings{visible: false, multipage: false}, funcSetNotifPriceEnter)
-		keyboardBot.Add(SetNotifNo, "Отменить", SetNotifPriceEnter, KeyboardSettings{visible: true, multipage: false}, funcSetNotifNo)
+		keyboardBot.Add(SetNotifNo, "Отменить", SetNotifPriceEnter, KeyboardSettings{visible: true, multipage: false, homeBack: true}, funcSetNotifNo)
 		keyboardBot.Add(SetNotifNoMyNotif, "Мои отслеживания", SetNotifNo, KeyboardSettings{visible: true, multipage: false}, funcGetNotif)
 		keyboardBot.Add(SetNotifNoNewNotif, "Новое отслеживание", SetNotifNo, KeyboardSettings{visible: true, multipage: true}, funcSetNotif)
-		keyboardBot.Add(SetNotifYes, "Подтвердить", SetNotifPriceEnter, KeyboardSettings{visible: true, multipage: false}, funcSetNotifYes)
+		keyboardBot.Add(SetNotifYes, "Подтвердить", SetNotifPriceEnter, KeyboardSettings{visible: true, multipage: false, homeBack: true}, funcSetNotifYes)
 		keyboardBot.Add(SetNotifYesMyNotif, "Мои отслеживания", SetNotifYes, KeyboardSettings{visible: true, multipage: false}, funcGetNotif)
 
 		keyboardBot.Add(Help, "Справка", Start, KeyboardSettings{visible: true, multipage: false})

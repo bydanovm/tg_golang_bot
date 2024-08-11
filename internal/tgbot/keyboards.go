@@ -68,8 +68,9 @@ type keyboardFeature struct {
 	function FuncHandler
 }
 type KeyboardSettings struct {
-	visible   bool
-	multipage bool
+	visible   bool // Видимость
+	multipage bool // Мультистраничность
+	homeBack  bool // Возврат на главную по кнопке назад
 }
 type tgBotMenu struct {
 	buttons *models.TreeNode
@@ -99,8 +100,9 @@ func (tgm *tgBotMenu) Add(name, desc, parentId string, settings KeyboardSettings
 	tgm.buttons.Add(name, desc, parentId)
 	tgm.feature[name] = keyboardFeature{
 		KeyboardSettings: KeyboardSettings{
-			settings.visible,
-			settings.multipage,
+			visible:   settings.visible,
+			multipage: settings.multipage,
+			homeBack:  settings.homeBack,
 		}}
 
 	for _, v := range foo {
@@ -125,6 +127,13 @@ func (tgm *tgBotMenu) GetMultiPage(name string) bool {
 		return false
 	}
 	return tgm.feature[name].multipage
+}
+
+func (tgm *tgBotMenu) GetSetting(name string) KeyboardSettings {
+	if _, ok := tgm.feature[name]; !ok {
+		return KeyboardSettings{}
+	}
+	return tgm.feature[name].KeyboardSettings
 }
 
 // func (tgm *tgBotMenu) EditVisibleButton(name string) {
@@ -161,11 +170,17 @@ func (tgm *tgBotMenu) GetMainMenuInlineMarkupFromNode(node string, mode ...int) 
 		isMode = v
 		break
 	}
-	isMultiPage := tgm.GetMultiPage(node)
-	if !isMultiPage {
+
+	keyboardSettings := tgm.GetSetting(node)
+	if !keyboardSettings.multipage && !keyboardSettings.homeBack {
 		nodeParent := tgm.buttons.GetParentNode(node)
 		if nodeParent != nil {
 			buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData("Назад", nodeParent.Name))
+		}
+	} else if keyboardSettings.homeBack {
+		nodeRoot := tgm.buttons.GetRootNode()
+		if nodeRoot != nil {
+			buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonData(nodeRoot.Description, nodeRoot.Name))
 		}
 	}
 	nodesChild := tgm.buttons.GetNodeChild(node)
