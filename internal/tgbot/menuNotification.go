@@ -4,18 +4,6 @@ import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 )
 
-const (
-	ChooseCrypto string = "Выберите или введите криптовалюту для отслеживания\n"
-	ChooseSum    string = "Выберите или введите сумму для отслеживания\n"
-	EnterCrypto  string = "Введите криптовалюту для отслеживания\n"
-	EnterSum     string = "Введите сумму для отслеживания\n"
-)
-
-type PriceInfo struct {
-	Koeff int
-	Price float32
-}
-
 // Функция обработки меню по "Оповещениям"
 func menuNotification(update *tgbotapi.Update, keyboardBot *tgBotMenu) (msg interface{}) {
 	// var ans string

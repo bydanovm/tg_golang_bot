@@ -11,6 +11,22 @@ import (
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 )
 
+const (
+	cChooseCrypto    string = "Выберите или введите криптовалюту для отслеживания\n"
+	cChooseSum       string = "Выберите или введите сумму для отслеживания\n"
+	cEnterCrypto     string = "Введите криптовалюту для отслеживания\n"
+	cEnterSum        string = "Введите сумму для отслеживания\n"
+	cChooseGetCrypto string = "Выберите или введите криптовалюту"
+	cEnterGetCrypto  string = "Введите криптовалюту"
+	сGetNotifIdOn    string = "Отслеживание включено"
+	сGetNotifIdOff   string = "Отслеживания отключено"
+)
+
+type PriceInfo struct {
+	Koeff int
+	Price float32
+}
+
 func menuHandler(update *tgbotapi.Update, bot tgbotapi.BotAPI) {
 	var msg interface{}
 
@@ -131,7 +147,7 @@ func funcGetCrypto(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inlin
 	for _, v := range listCryptoCur {
 		listButtons = append(listButtons, buttonInfo{v.CryptoName, GetCryptoCurr + `_` + strconv.Itoa(v.CryptoId)})
 	}
-	ans = ChooseGetCrypto
+	ans = cChooseGetCrypto
 	keyboard = ConvertToButtonInlineKeyboard(listButtons, callBackData[0], 3, isMode)
 	return ans, keyboard
 }
@@ -231,7 +247,7 @@ func funcSetNotif(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inline
 	}
 
 	offset := 10
-	ans = ChooseGetCrypto
+	ans = cChooseGetCrypto
 
 	userInfo := FindUserIdFromUpdate(update)
 	// Вызов может поступить из другого пункта меню, проверяем наличие в кеше
@@ -285,7 +301,7 @@ func funcSetNotifPrice(update *tgbotapi.Update) (ans string, keyboard tgbotapi.I
 	}
 	SetNotifCh.SetIdCrypto(int(update.CallbackQuery.Message.Chat.ID), n)
 
-	ans = ChooseSum
+	ans = cChooseSum
 
 	infoCurrency, err := caching.GetCacheByIdxInMap(caching.CryptoCache, n, 0)
 	if err != nil {
