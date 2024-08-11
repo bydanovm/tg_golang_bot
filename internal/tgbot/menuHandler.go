@@ -265,7 +265,7 @@ func funcSetNotif(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inline
 	listCryptoCur, _, _ := caching.GetCacheOffset(caching.CryptoCache, offset)
 	listButtons := make([]buttonInfo, 0, 10)
 	for _, v := range listCryptoCur {
-		listButtons = append(listButtons, buttonInfo{v.CryptoName, SetNotifPrice + `_` + v.CryptoName})
+		listButtons = append(listButtons, buttonInfo{v.CryptoName, SetNotifPrice + `_` + strconv.Itoa(v.CryptoId)})
 	}
 	keyboard = ConvertToButtonInlineKeyboard(listButtons, callBackData[0], 3)
 	return ans, keyboard
@@ -278,17 +278,16 @@ func funcSetNotifPrice(update *tgbotapi.Update) (ans string, keyboard tgbotapi.I
 	}
 
 	// Возможно переключить на пакет caching
-	// Пишем в кеш крипту
-	SetNotifCh.SetCrypto(int(update.CallbackQuery.Message.Chat.ID), callBackData[1])
+	// Пишем в кеш ИД крипты
+	n, err := strconv.Atoi(callBackData[1])
+	if err != nil {
+		return ans, keyboard
+	}
+	SetNotifCh.SetIdCrypto(int(update.CallbackQuery.Message.Chat.ID), n)
 
 	ans = ChooseSum
 
-	// Возможно переключить на пакет caching
-	// Получаем из кеша нашу крипту
-	crypto := SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID))
-
-	infoCurrency, err := caching.GetCacheRecordsKeyChain(caching.CryptoCache, crypto, false)
-	// infoCurrency, err := caching.GetCacheByIdxInMap(caching.CryptoCache, crypto, 0)
+	infoCurrency, err := caching.GetCacheByIdxInMap(caching.CryptoCache, n, 0)
 	if err != nil {
 		// Здесь должна быть обработка ошибки
 		ans += fmt.Sprintf("%s %s", "Выбранная криптовалюта", "не найдена в базе")
@@ -296,18 +295,20 @@ func funcSetNotifPrice(update *tgbotapi.Update) (ans string, keyboard tgbotapi.I
 	}
 
 	// Запись в кеш текущей цены
-	SetNotifCh.SetCurrentPrice(int(update.CallbackQuery.Message.Chat.ID), infoCurrency[0].CryptoLastPrice)
+	SetNotifCh.SetCurrentPrice(int(update.CallbackQuery.Message.Chat.ID), infoCurrency.CryptoLastPrice)
+	// Запись в кеш мнемоники криптовалюты
+	SetNotifCh.SetCrypto(int(update.CallbackQuery.Message.Chat.ID), infoCurrency.CryptoName)
 
-	ans += "Выбрана криптовалюта: " + infoCurrency[0].CryptoName + "\n"
+	ans += "Выбрана криптовалюта: " + infoCurrency.CryptoName + "\n"
 
 	prices := []PriceInfo{}
 
-	prices = append(prices, PriceInfo{1, infoCurrency[0].CryptoLastPrice * 1.01})
-	prices = append(prices, PriceInfo{5, infoCurrency[0].CryptoLastPrice * 1.05})
-	prices = append(prices, PriceInfo{10, infoCurrency[0].CryptoLastPrice * 1.1})
-	prices = append(prices, PriceInfo{-1, infoCurrency[0].CryptoLastPrice * 0.99})
-	prices = append(prices, PriceInfo{-5, infoCurrency[0].CryptoLastPrice * 0.95})
-	prices = append(prices, PriceInfo{-10, infoCurrency[0].CryptoLastPrice * 0.9})
+	prices = append(prices, PriceInfo{1, infoCurrency.CryptoLastPrice * 1.01})
+	prices = append(prices, PriceInfo{5, infoCurrency.CryptoLastPrice * 1.05})
+	prices = append(prices, PriceInfo{10, infoCurrency.CryptoLastPrice * 1.1})
+	prices = append(prices, PriceInfo{-1, infoCurrency.CryptoLastPrice * 0.99})
+	prices = append(prices, PriceInfo{-5, infoCurrency.CryptoLastPrice * 0.95})
+	prices = append(prices, PriceInfo{-10, infoCurrency.CryptoLastPrice * 0.9})
 
 	listButtons := make([]buttonInfo, 0, 10)
 	for _, v := range prices {
@@ -360,10 +361,10 @@ func funcSetNotifYes(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inl
 
 	// Нажата ДА на последнем этапе, возврат в начало
 	// Определить КВ по мнемонике
-	idCrpt, err := caching.GetCacheRecordsKeyChain(caching.CryptoCache, setNotif.Crypto, true)
-	if idCrpt[0].CryptoId == 0 || err != nil {
-		ans += fmt.Sprintf("Криптовалюта %s не найдена.\nИсправьте команду и повторите запрос\n", SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID)))
-	}
+	// idCrpt, err := caching.GetCacheRecordsKeyChain(caching.CryptoCache, setNotif.Crypto, true)
+	// if idCrpt[0].CryptoId == 0 || err != nil {
+	// 	ans += fmt.Sprintf("Криптовалюта %s не найдена.\nИсправьте команду и повторите запрос\n", SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID)))
+	// }
 	// Найти Тип отслеживания
 	idType := setNotif.IdCriterion
 	// Установка лимита
@@ -383,7 +384,7 @@ func funcSetNotifYes(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inl
 
 	tracking := database.TrackingCrypto{
 		IdTrkCrp:    database.TCCache.GetCacheLastId(),
-		DctCrpId:    idCrpt[0].CryptoId,
+		DctCrpId:    setNotif.IdCrypto,
 		TypTrkCrpId: idType,
 		LmtId:       limit.IdLmt,
 		UserId:      update.CallbackQuery.From.ID,

@@ -64,6 +64,25 @@ func (uc *SetNotifCacheStruct) SetCrypto(idUsr int, crypto string) {
 	}
 }
 
+func (uc *SetNotifCacheStruct) SetIdCrypto(idUsr int, idCrypto int) {
+	isRLock := uc.URLockU()
+	if _, ok := uc.Item[idUsr]; !ok {
+		isRLock = uc.URUnlock()
+		uc.mu.Lock()
+		uc.Item[idUsr] = SetNotifStruct{IdCrypto: idCrypto}
+		uc.mu.Unlock()
+	} else {
+		item := uc.Item[idUsr]
+		item.IdCrypto = idCrypto
+		isRLock = uc.URUnlock()
+		uc.mu.Lock()
+		uc.Item[idUsr] = item
+		uc.mu.Unlock()
+	}
+	if isRLock {
+		uc.mu.RUnlock()
+	}
+}
 func (uc *SetNotifCacheStruct) SetCriterion(idUsr int, criterion int) {
 	isRLock := uc.URLockU()
 	if _, ok := uc.Item[idUsr]; !ok {
@@ -131,6 +150,15 @@ func (uc *SetNotifCacheStruct) GetCrypto(idUsr int) (crypto string) {
 		crypto = v.Crypto
 	}
 	return crypto
+}
+
+func (uc *SetNotifCacheStruct) GetIdCrypto(idUsr int) (idCrypto int) {
+	uc.mu.RLock()
+	defer uc.mu.RUnlock()
+	if v, ok := uc.Item[idUsr]; ok {
+		idCrypto = v.IdCrypto
+	}
+	return idCrypto
 }
 
 func (uc *SetNotifCacheStruct) GetCriterion(idUsr int) (criterion int) {
