@@ -32,6 +32,8 @@ type fieldInfo struct {
 	StructSQLTypes   string
 	StructTagIsPKey  string
 	StructTagIsFKey  string
+	StructTagIsMiss  string
+	StructTagIsIncr  string
 	StructValue      interface{}
 }
 type StructInfo struct {
@@ -63,6 +65,8 @@ func (s *StructInfo) GetFieldInfo(in interface{}) error {
 			StructSQLTypes:   tag.Get("sql_type"),
 			StructTagIsPKey:  tag.Get("pkey"),
 			StructTagIsFKey:  tag.Get("fkey"),
+			StructTagIsMiss:  tag.Get("miss"),
+			StructTagIsIncr:  tag.Get("incr"),
 			StructValue:      structValue}
 	}
 	s.StructFieldInfo = fieldInfoMap
@@ -74,6 +78,10 @@ func (s *StructInfo) UnionFieldsSQL() (map[string]string, error) {
 	var fld, val []string
 	fieldInfoMap := make(map[string]string)
 	for _, v := range s.StructFieldInfo {
+		// Пропустить это поле
+		if v.StructTagIsMiss == "YES" {
+			continue
+		}
 		fld = append(fld, v.StructNameFields)
 		_, ok := v.StructValue.(time.Time)
 		if ok {
@@ -111,6 +119,21 @@ func (s *StructInfo) GetForeignKey() (field fieldInfo, err error) {
 	}
 	if field.StructNameFields == "" {
 		err = fmt.Errorf("GetForeignKey:FK is not found")
+	}
+
+	return field, err
+}
+
+// Получить поле autoincrement
+func (s *StructInfo) GetIncrement() (field fieldInfo, err error) {
+	for _, v := range s.StructFieldInfo {
+		if v.StructTagIsIncr == "YES" {
+			field = v
+			break
+		}
+	}
+	if field.StructNameFields == "" {
+		err = fmt.Errorf("GetIncrement:Incr is not found")
 	}
 
 	return field, err

@@ -19,6 +19,9 @@ var TrackingTypeCache = Init[database.TypeTrackingCrypto](time.Hour*24*365, 0)
 
 var Limits = Init[database.Limits](time.Hour*24, time.Hour*12)
 
+// Временный кеш с ценами КВ
+var CryptoPricesCache = Init[database.Cryptoprices](time.Minute*5, time.Second*150)
+
 type Item[T iCacheble] struct {
 	value      []T
 	created    time.Time
