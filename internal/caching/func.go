@@ -39,7 +39,7 @@ func CheckCacheAndWrite[T iCacheble](link iCacher[T], k int, object T) (retObjec
 	// Сериализация для отправки
 	buffer, err := models.MarshalJSON(object)
 	if err != nil {
-		return retObject, fmt.Errorf("WriteRecord:" + err.Error())
+		return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
 	}
 
 	// Проверка наличия в БД
@@ -47,7 +47,7 @@ func CheckCacheAndWrite[T iCacheble](link iCacher[T], k int, object T) (retObjec
 	if err != nil {
 		if strings.Contains(err.Error(), "NoRows") {
 			// Запись в БД и возврат ответного тела
-			result, err = database.WriteRecord[T](buffer)
+			result, _, err = database.WriteRecord[T](buffer)
 			if err != nil {
 				return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
 			}
@@ -256,7 +256,7 @@ func UpdateCacheRecord[T iCacheble](link iCacher[T], k int, object T) (retObject
 	if err != nil {
 		if strings.Contains(err.Error(), "NoRows") {
 			// Запись в БД и возврат ответного тела
-			result, err = database.WriteRecord[T](buffer)
+			result, _, err = database.WriteRecord[T](buffer)
 			if err != nil {
 				return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
 			}
@@ -289,4 +289,39 @@ func UpdateCacheRecord[T iCacheble](link iCacher[T], k int, object T) (retObject
 	// Нужна ли проверка на консистентность?
 
 	return retObject, err
+}
+
+// Запись в кеш с записью в БД без проверок на существование
+func WriteCache[T iCacheble](link iCacher[T], k int, object T) (retObject T, err error) {
+	// Сериализация для отправки
+	buffer, err := models.MarshalJSON(object)
+	if err != nil {
+		return retObject, fmt.Errorf("WriteRecord:" + err.Error())
+	}
+
+	// Запись в БД и возврат ответного тела
+	result, id, err := database.WriteRecord[T](buffer)
+	if err != nil {
+		return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+	}
+
+	// Десереализация для записи в кеш
+	data, err := models.UnmarshalJSON[T](result)
+	if err != nil {
+		return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+	}
+
+	// Запись к кеш
+	switch idConv := id.(type) {
+	case interface{}:
+		switch idInt := idConv.(type) {
+		case int64:
+			SetCache(link, int(idInt), data, 0)
+		default:
+			SetCache(link, k, data, 0)
+		}
+	}
+	// SetCache(link, int(id), data, 0)
+
+	return data, err
 }

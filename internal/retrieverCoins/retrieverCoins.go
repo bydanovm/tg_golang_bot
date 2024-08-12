@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mbydanov/tg_golang_bot/internal/caching"
 	"github.com/mbydanov/tg_golang_bot/internal/coinmarketcup"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
-	"github.com/mitchellh/mapstructure"
 )
 
 type quotesLatestAnswerExt struct {
@@ -40,36 +40,28 @@ func RunRetrieverCoins(
 	}
 }
 func retrieverCoins() (interface{}, error) {
-	// Получаем основные КВ для запроса актуальной информации из справочника КВ
-	fields := database.DictCrypto{}
-	expLst := []database.Expressions{}
-
-	expLst = append(expLst, database.Expressions{
-		Key: database.CryptoName, Operator: database.NotEQ, Value: `'` + database.Empty + `'`,
-	})
-
-	rs, find, _, err := database.ReadDataRow(&fields, expLst, 0)
+	// Получить из кеша данные по криптовалюте
+	currencies, err := caching.GetCacheAllRecord(caching.CryptoCache)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("retrieverCoins:" + err.Error())
 	}
-	// Если какие-то записи найдены, то мы строим запрос для обращения к API
-	if find {
-		var needFind []string
-		for _, subRs := range rs {
-			subFields := database.DictCrypto{}
-			mapstructure.Decode(subRs, &subFields)
-			if subFields.Active {
-				needFind = append(needFind, subFields.CryptoName)
-			}
-		}
-		if len(needFind) > 0 {
-			if res, err := getAndSaveFromAPI(needFind); err != nil {
-				return res, err
-			} else {
-				return res, err
-			}
+
+	// Строим список валют для запроса
+	var needFind []string
+	for _, currency := range currencies {
+		if currency.Active {
+			needFind = append(needFind, currency.CryptoName)
 		}
 	}
+
+	if len(needFind) > 0 {
+		if res, err := getAndSaveFromAPI(needFind); err != nil {
+			return res, err
+		} else {
+			return res, err
+		}
+	}
+
 	return nil, nil
 }
 
@@ -104,41 +96,29 @@ func getAndSaveFromAPI(cryptoCur []string) (interface{}, error) {
 	}
 	for i := range qla.QuotesLatestAnswerResults {
 
-		dateTime, err := models.ConvertDateTimeToMSK(qla.QuotesLatestAnswerResults[i].Last_updated)
+		cryptoprices := database.Cryptoprices{
+			Timestamp:    time.Now(),
+			CryptoId:     qla.QuotesLatestAnswerResults[i].Id,
+			CryptoPrice:  qla.QuotesLatestAnswerResults[i].Price,
+			CryptoUpdate: qla.QuotesLatestAnswerResults[i].Last_updated,
+		}
+		cryptoprices, err = caching.WriteCache(caching.CryptoPricesCache, cryptoprices.CryptoId, cryptoprices)
 		if err != nil {
-			return nil, fmt.Errorf("getAndSaveFromAPI:" + err.Error())
-		}
-		// dateTimeUTC3, _ := time.ParseInLocation(layout, dateTime, dateTimeLocUTC3)
-		// Добавление найденной валюты в таблицы текущих цен и обновление справочника валют
-		cryptoprices := map[string]string{
-			"CryptoId":     fmt.Sprintf("%v", qla.QuotesLatestAnswerResults[i].Id),
-			"CryptoPrice":  fmt.Sprintf("%v", qla.QuotesLatestAnswerResults[i].Price),
-			"CryptoUpdate": dateTime,
-		}
-		if err := database.WriteData("cryptoprices", cryptoprices); err != nil {
 			return nil, err
 		}
 
-		dictCryptos := map[string]string{
-			// "CryptoId":        fmt.Sprintf("%v", qla.QuotesLatestAnswerResults[i].Id),
-			// "CryptoName":      fmt.Sprintf("%v", qla.QuotesLatestAnswerResults[i].Symbol),
-			"CryptoLastPrice": fmt.Sprintf("%v", qla.QuotesLatestAnswerResults[i].Price),
-			"CryptoUpdate":    dateTime,
+		// Берем запись из кеша
+		currency, err := caching.GetCacheByIdxInMap(caching.CryptoCache, qla.QuotesLatestAnswerResults[i].Id)
+		if err != nil {
+			return nil, fmt.Errorf("getAndSaveFromAPI:" + err.Error())
 		}
-		expLst := []database.Expressions{}
-		expLst = append(expLst, database.Expressions{
-			Key: database.CryptoId, Operator: database.EQ, Value: `'` + cryptoprices["CryptoId"] + `'`,
-		})
-		if err := database.UpdateData("dictcrypto", dictCryptos, expLst); err != nil {
-			return nil, err
-		} else {
-			// Если не было ошибки при обновлении, то кешируем
-			// panic: interface conversion: interface {} is nil, not database.DictCrypto
-			if d, ok := database.DCCache[qla.QuotesLatestAnswerResults[i].Id].(database.DictCrypto); ok {
-				d.CryptoLastPrice = qla.QuotesLatestAnswerResults[i].Price
-				// d.CryptoUpdate = dateTime
-				database.DCCache[qla.QuotesLatestAnswerResults[i].Id] = d
-			}
+
+		// Обновляем запись в кеше и БД
+		currency.CryptoLastPrice = cryptoprices.CryptoPrice
+		// currency.CryptoUpdate = dateTime // Время обновления как TS
+		currency, err = caching.UpdateCacheRecord(caching.CryptoCache, currency.CryptoId, currency)
+		if err != nil {
+			return nil, fmt.Errorf("getAndSaveFromAPI:" + err.Error())
 		}
 
 		// Поиск индекса найденной валюты и её удаление из массива needFind

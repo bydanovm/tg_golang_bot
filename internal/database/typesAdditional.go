@@ -27,22 +27,23 @@ func CheckRecord[T any](in []byte) ([]byte, error) {
 	}
 	return buffer, nil
 }
-func WriteRecord[T any](in []byte) ([]byte, error) {
+func WriteRecord[T any](in []byte) ([]byte, interface{}, error) {
 	// Десереализация
 	data, err := models.UnmarshalJSON[T](in)
 	if err != nil {
-		return nil, fmt.Errorf("WriteRecord:" + err.Error())
+		return nil, -1, fmt.Errorf("WriteRecord:" + err.Error())
 	}
 	// Запись в БД
-	if err := writeDataT(data); err != nil {
-		return nil, fmt.Errorf("WriteRecord:" + err.Error())
+	id, err := writeDataT(data)
+	if err != nil {
+		return nil, -1, fmt.Errorf("WriteRecord:" + err.Error())
 	}
 	// Сериализация обратно
 	buffer, err := models.MarshalJSON(data)
 	if err != nil {
-		return nil, fmt.Errorf("WriteRecord:" + err.Error())
+		return nil, -1, fmt.Errorf("WriteRecord:" + err.Error())
 	}
-	return buffer, nil
+	return buffer, id, nil
 }
 func UpdateRecord[T any](in []byte) ([]byte, error) {
 	// Десереализация
@@ -96,34 +97,43 @@ func checkRecordPK[T any](in T) error {
 
 	return nil
 }
-func writeDataT[T any](in T) error {
+func writeDataT[T any](in T) (res interface{}, err error) {
 
 	// Определяем информацию по структуре
 	structInfo := models.StructInfo{}
 	if err := structInfo.GetFieldInfo(in); err != nil {
-		return err
+		return -1, err
 	}
 	fieldinfoMap, err := structInfo.UnionFieldsSQL()
 	if err != nil {
-		return err
+		return -1, err
 	}
+
 	// Создаем SQL запрос
 	data := `INSERT INTO ` + structInfo.StructName + ` (` +
-		fieldinfoMap["Fields"] + `) VALUES ('` + fieldinfoMap["Values"] + `');`
+		fieldinfoMap["Fields"] + `) VALUES ('` + fieldinfoMap["Values"] + `')`
+
+	fieldValue, err := structInfo.GetIncrement()
+	if fieldValue.StructNameFields != "" {
+		data += ` RETURNING ` + fieldValue.StructNameFields
+	}
+	data += `;`
 
 	//Подключаемся к БД
 	db, err := sql.Open("postgres", dbInfo)
 	if err != nil {
-		return fmt.Errorf("WriteData:" + sqlConErr + ":" + err.Error())
+		return -1, fmt.Errorf("WriteData:" + sqlConErr + ":" + err.Error())
 	}
 	defer db.Close()
 
-	//Выполняем наш SQL запрос
-	if _, err = db.Exec(data); err != nil {
-		return fmt.Errorf("WriteData:" + data + ":" + err.Error())
+	//Выполняем наш SQL запрос и получаем
+	// sr, err := db.Exec(data)
+	err = db.QueryRow(data).Scan(&res)
+	if err != nil {
+		return -1, fmt.Errorf("WriteData:" + data + ":" + err.Error())
 	}
 
-	return nil
+	return res, nil
 }
 
 func updateDataT[T any](in T) error {

@@ -31,7 +31,7 @@ const (
 )
 
 type LogMsg struct {
-	Id        int       `sql_type:"SERIAL PRIMARY KEY"`
+	Id        int       `sql_type:"SERIAL PRIMARY KEY" incr:"YES"`
 	Timestamp time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 	UserName  string    `sql_type:"TEXT"`
 	Chat_Id   int       `sql_type:"INTEGER"`
@@ -40,7 +40,7 @@ type LogMsg struct {
 }
 
 type DictCrypto struct {
-	Id              int       `sql_type:"SERIAL PRIMARY KEY"`
+	Id              int       `sql_type:"SERIAL PRIMARY KEY" incr:"YES"`
 	Timestamp       time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 	CryptoId        int       `sql_type:"INTEGER" pkey:"YES"`
 	CryptoName      string    `sql_type:"TEXT" fkey:"YES"`
@@ -52,16 +52,16 @@ type DictCrypto struct {
 
 // Структура данных таблицы Cryptoprices
 type Cryptoprices struct {
-	Id           int       `sql_type:"SERIAL PRIMARY KEY"`
+	Id           int       `sql_type:"SERIAL PRIMARY KEY" fkey:"YES" miss:"YES" incr:"YES"`
 	Timestamp    time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
-	CryptoId     int       `sql_type:"INTEGER"`
+	CryptoId     int       `sql_type:"INTEGER" pkey:"YES"`
 	CryptoPrice  float32   `sql_type:"NUMERIC(15,9)"`
 	CryptoUpdate time.Time `sql_type:"TIMESTAMP"`
 }
 
 // Настроечная таблица
 type SettingsProject struct {
-	Id          int       `sql_type:"SERIAL PRIMARY KEY"`
+	Id          int       `sql_type:"SERIAL PRIMARY KEY" incr:"YES"`
 	Name        string    `sql_type:"TEXT"`
 	Description string    `sql_type:"TEXT"`
 	Active      bool      `sql_type:"BOOLEAN"`
@@ -71,22 +71,22 @@ type SettingsProject struct {
 	Timelast    time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 }
 type LevelsSecureAdd struct {
-	IdLvlSecAdd     int    `sql_type:"SERIAL PRIMARY KEY"`
+	IdLvlSecAdd     int    `sql_type:"SERIAL PRIMARY KEY" incr:"YES"`
 	NameLvlSecAdd   string `sql_type:"TEXT"`
 	ActiveLvlSecAdd bool   `sql_type:"BOOLEAN DEFAULT FALSE"`
 	LvlSecId        int    `sql_type:"INTEGER REFERENCES LevelsSecure (idLvlSec)"`
 }
 type LevelsSecure struct {
-	IdLvlSec   int    `sql_type:"SERIAL PRIMARY KEY"`
+	IdLvlSec   int    `sql_type:"SERIAL PRIMARY KEY" incr:"YES"`
 	NameLvlSec string `sql_type:"TEXT"`
 }
 type Groups struct {
-	IdGrp    int    `sql_type:"SERIAL PRIMARY KEY"`
+	IdGrp    int    `sql_type:"SERIAL PRIMARY KEY" incr:"YES"`
 	NameGrp  string `sql_type:"TEXT"`
 	LvlSecId int    `sql_type:"INTEGER REFERENCES LevelsSecure (idLvlSec)"`
 }
 type Users struct {
-	IdUsr     int       `sql_type:"SERIAL PRIMARY KEY" pkey:"YES"`
+	IdUsr     int       `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES"`
 	TsUsr     time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 	NameUsr   string    `sql_type:"TEXT NOT NULL"`
 	FirstName string    `sql_type:"TEXT NOT NULL"`
@@ -208,13 +208,13 @@ func (u *Users) Add() (int, error) {
 }
 
 type LimitsDict struct {
-	IdLmtDct   int    `sql_type:"SERIAL PRIMARY KEY"`
+	IdLmtDct   int    `sql_type:"SERIAL PRIMARY KEY" incr:"YES"`
 	NameLmtDct string `sql_type:"TEXT NOT NULL UNIQUE"`
 	DescLmtDct string `sql_type:"TEXT NOT NULL"`
 	StdValLmt  int    `sql_type:"INTEGER DEFAULT 0"`
 }
 type Limits struct {
-	IdLmt       int       `sql_type:"SERIAL PRIMARY KEY" pkey:"YES"`
+	IdLmt       int       `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES"`
 	ValAvailLmt int       `sql_type:"INTEGER DEFAULT 0"`
 	ValUsedLmt  int       `sql_type:"INTEGER DEFAULT 0"`
 	ActiveLmt   bool      `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
@@ -306,7 +306,7 @@ func (l *Limits) IncrLimit(valIncr int) (int, error) {
 }
 
 type TypeTrackingCrypto struct {
-	IdTypTrkCrp       int    `sql_type:"SERIAL PRIMARY KEY" pkey:"YES"`
+	IdTypTrkCrp       int    `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES"`
 	NameTypeTrkCrp    string `sql_type:"TEXT NOT NULL UNIQUE"`
 	DescTypTrkCrp     string `sql_type:"TEXT NOT NULL"`
 	RisingTypTrkCrp   bool   `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
@@ -355,7 +355,7 @@ func (t *TypeTrackingCrypto) GetTypeInfo() (interface{}, error) {
 }
 
 type TrackingCrypto struct {
-	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY" pkey:"YES"`
+	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES"`
 	ValTrkCrp   float32 `sql_type:"NUMERIC(19,9)"`
 	OnTrkCrp    bool    `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
 	LmtId       int     `sql_type:"INTEGER REFERENCES Limits (lmtid)"`
