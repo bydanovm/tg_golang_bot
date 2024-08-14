@@ -52,7 +52,7 @@ type DictCrypto struct {
 
 // Структура данных таблицы Cryptoprices
 type Cryptoprices struct {
-	Id           int       `sql_type:"SERIAL PRIMARY KEY" fkey:"YES" miss:"YES" incr:"YES"`
+	Id           int       `sql_type:"SERIAL PRIMARY KEY" miss:"YES" incr:"YES"`
 	Timestamp    time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
 	CryptoId     int       `sql_type:"INTEGER" pkey:"YES"`
 	CryptoPrice  float32   `sql_type:"NUMERIC(15,9)"`
@@ -307,7 +307,7 @@ func (l *Limits) IncrLimit(valIncr int) (int, error) {
 
 type TypeTrackingCrypto struct {
 	IdTypTrkCrp       int    `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES"`
-	NameTypeTrkCrp    string `sql_type:"TEXT NOT NULL UNIQUE"`
+	NameTypeTrkCrp    string `sql_type:"TEXT NOT NULL UNIQUE" fkey:"YES"`
 	DescTypTrkCrp     string `sql_type:"TEXT NOT NULL"`
 	RisingTypTrkCrp   bool   `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
 	CalcProcTypTrkCrp bool   `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
