@@ -17,7 +17,9 @@ var TrackingCache = Init[database.TrackingCrypto](time.Hour*24, time.Hour*12)
 
 var TrackingTypeCache = Init[database.TypeTrackingCrypto](time.Hour*24*365, 0)
 
-var Limits = Init[database.Limits](time.Hour*24, time.Hour*12)
+var LimitsCache = Init[database.Limits](time.Hour*24, time.Hour*12)
+
+var LimitsDictCache = Init[database.LimitsDict](time.Hour*24*365, 0)
 
 // Временный кеш с ценами КВ
 var CryptoPricesCache = Init[database.Cryptoprices](time.Minute*5, time.Second*150)

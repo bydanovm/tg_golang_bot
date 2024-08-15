@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -34,6 +33,7 @@ func main() {
 	chanModules := make(chan models.StatusChannel)
 	// Получение настроек
 	// go config.GetConfig(chConfig)
+
 	// Кешировние
 	// Кеширование пользователей
 	caching.FillCache(caching.UsersCache, 100)
@@ -44,27 +44,10 @@ func main() {
 	// Кешируем типы отслеживаний
 	caching.FillCache(caching.TrackingTypeCache, 10)
 	// Кешируем лимиты
-	caching.FillCache(caching.Limits, 100)
+	caching.FillCache(caching.LimitsCache, 100)
+	// Кешируем словарь лимитов
+	caching.FillCache(caching.LimitsDictCache, 10)
 
-	if err := database.DCCache.CheckAllCache(); err != nil {
-		services.Logging.Panic(fmt.Errorf("main:" + err.Error()))
-	}
-	// Кешируем типы отслеживания
-	if err := database.TypeTCCache.CheckAllCache(); err != nil {
-		services.Logging.Panic(fmt.Errorf("main:" + err.Error()))
-	}
-	// Кешируем активные отслеживания
-	if err := database.TCCache.CheckAllCache(); err != nil {
-		services.Logging.Panic(fmt.Errorf("main:" + err.Error()))
-	}
-	// Кеширование словаря лимитов
-	if err := database.LmtCacheKeys.InitCache(); err != nil {
-		services.Logging.Panic(fmt.Errorf("main:LmtKeys:" + err.Error()))
-	}
-	// Кеширование лимитов
-	if err := database.LmtCache.InitCache(); err != nil {
-		services.Logging.Panic(fmt.Errorf("main:Lmt:" + err.Error()))
-	}
 	// Функция считывания настроек из канала
 	// go func() {
 	// 	for {

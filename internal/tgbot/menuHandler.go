@@ -353,9 +353,9 @@ func funcSetNotifPriceEnter(update *tgbotapi.Update) (ans string, keyboard tgbot
 	// Определяем и записываем критерий (тип триггера)
 	idType := 0
 	if SetNotifCh.GetCurrentPrice(int(update.CallbackQuery.Message.Chat.ID)) <= float32(n) {
-		idType = database.TypeTCCacheKeys.GetCacheIdByName("RAISE_V")
+		idType = caching.GetCacheElementKeyChain(caching.TrackingTypeCache, "RAISE_V").(int)
 	} else {
-		idType = database.TypeTCCacheKeys.GetCacheIdByName("FALL_V")
+		idType = caching.GetCacheElementKeyChain(caching.TrackingTypeCache, "FALL_V").(int)
 	}
 	SetNotifCh.SetCriterion(int(update.CallbackQuery.Message.Chat.ID), idType)
 
@@ -383,20 +383,22 @@ func funcSetNotifYes(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inl
 	// Установка лимита
 	limit := database.Limits{}
 	if ans == "" {
+		// Чтение LMT003
+		lmt, _ := caching.GetCacheByIdxInMap(caching.LimitsDictCache, caching.GetCacheElementKeyChain(caching.LimitsDictCache, "LMT003").(int))
 		limit = database.Limits{
-			IdLmt:       database.LmtCache.GetCacheLastId(),
-			ValAvailLmt: database.LmtCacheKeys["LMT003"].StdValLmt,
+			ValAvailLmt: lmt.StdValLmt,
 			ActiveLmt:   true,
 			UserId:      update.CallbackQuery.From.ID,
-			LtmDctId:    database.LmtCacheKeys["LMT003"].IdLmtDct,
+			LtmDctId:    lmt.IdLmtDct,
 		}
-		if err := limit.SetLimit(); err != nil {
+		if _, id, err := caching.WriteCache(caching.LimitsCache, 0, limit); err != nil {
 			ans += fmt.Sprintf("tgbot:%s\n", err.Error())
+		} else {
+			limit.IdLmt = int(id)
 		}
 	}
 
 	tracking := database.TrackingCrypto{
-		IdTrkCrp:    database.TCCache.GetCacheLastId(),
 		DctCrpId:    setNotif.IdCrypto,
 		TypTrkCrpId: idType,
 		LmtId:       limit.IdLmt,
@@ -404,7 +406,7 @@ func funcSetNotifYes(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inl
 		ValTrkCrp:   SetNotifCh.GetPrice(int(update.CallbackQuery.Message.Chat.ID)),
 		OnTrkCrp:    true,
 	}
-	if err := tracking.SetTracking(); err != nil {
+	if _, _, err := caching.WriteCache(caching.TrackingCache, 0, tracking); err != nil {
 		ans += fmt.Sprintf("tgbot:%s\n", err.Error())
 	} else {
 		ans += fmt.Sprintf("Отслеживание по криптовалюте %s успешно добавлено\n", SetNotifCh.GetCrypto(int(update.CallbackQuery.Message.Chat.ID)))

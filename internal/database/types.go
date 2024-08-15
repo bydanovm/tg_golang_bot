@@ -208,13 +208,13 @@ func (u *Users) Add() (int, error) {
 }
 
 type LimitsDict struct {
-	IdLmtDct   int    `sql_type:"SERIAL PRIMARY KEY" incr:"YES"`
-	NameLmtDct string `sql_type:"TEXT NOT NULL UNIQUE"`
+	IdLmtDct   int    `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES" miss:"YES"`
+	NameLmtDct string `sql_type:"TEXT NOT NULL UNIQUE" fkey:"YES"`
 	DescLmtDct string `sql_type:"TEXT NOT NULL"`
 	StdValLmt  int    `sql_type:"INTEGER DEFAULT 0"`
 }
 type Limits struct {
-	IdLmt       int       `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES"`
+	IdLmt       int       `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES" miss:"YES"`
 	ValAvailLmt int       `sql_type:"INTEGER DEFAULT 0"`
 	ValUsedLmt  int       `sql_type:"INTEGER DEFAULT 0"`
 	ActiveLmt   bool      `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
@@ -355,7 +355,7 @@ func (t *TypeTrackingCrypto) GetTypeInfo() (interface{}, error) {
 }
 
 type TrackingCrypto struct {
-	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES"`
+	IdTrkCrp    int     `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES" miss:"YES"`
 	ValTrkCrp   float32 `sql_type:"NUMERIC(19,9)"`
 	OnTrkCrp    bool    `sql_type:"BOOLEAN NOT NULL DEFAULT FALSE"`
 	LmtId       int     `sql_type:"INTEGER REFERENCES Limits (lmtid)"`

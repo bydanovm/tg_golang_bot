@@ -292,36 +292,37 @@ func UpdateCacheRecord[T iCacheble](link iCacher[T], k int, object T) (retObject
 }
 
 // Запись в кеш с записью в БД без проверок на существование
-func WriteCache[T iCacheble](link iCacher[T], k int, object T) (retObject T, err error) {
+func WriteCache[T iCacheble](link iCacher[T], k int, object T) (retObject T, id int64, err error) {
 	// Сериализация для отправки
 	buffer, err := models.MarshalJSON(object)
 	if err != nil {
-		return retObject, fmt.Errorf("WriteRecord:" + err.Error())
+		return retObject, -1, fmt.Errorf("WriteRecord:" + err.Error())
 	}
 
 	// Запись в БД и возврат ответного тела
-	result, id, err := database.WriteRecord[T](buffer)
+	result, idw, err := database.WriteRecord[T](buffer)
 	if err != nil {
-		return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+		return retObject, -1, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
 	}
 
 	// Десереализация для записи в кеш
 	data, err := models.UnmarshalJSON[T](result)
 	if err != nil {
-		return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+		return retObject, -1, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
 	}
 
 	// Запись к кеш
-	switch idConv := id.(type) {
+	switch idConv := idw.(type) {
 	case interface{}:
 		switch idInt := idConv.(type) {
 		case int64:
 			SetCache(link, int(idInt), data, 0)
+			id = idInt
 		default:
 			SetCache(link, k, data, 0)
 		}
 	}
 	// SetCache(link, int(id), data, 0)
 
-	return data, err
+	return data, id, err
 }

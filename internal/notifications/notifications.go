@@ -72,7 +72,7 @@ func notificationsCC() (interface{}, error) {
 		}
 
 		// Получаем лимиты
-		lmt, err := caching.GetCacheByIdxInMap(caching.Limits, tracking.LmtId)
+		lmt, err := caching.GetCacheByIdxInMap(caching.LimitsCache, tracking.LmtId)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}
@@ -96,7 +96,7 @@ func notificationsCC() (interface{}, error) {
 
 		// Увеличиваем использованные лимиты и обновляем в кеше/бд
 		lmt.ValUsedLmt++
-		lmt, err = caching.UpdateCacheRecord(caching.Limits, lmt.IdLmt, lmt)
+		lmt, err = caching.UpdateCacheRecord(caching.LimitsCache, lmt.IdLmt, lmt)
 		if err != nil {
 			return nil, fmt.Errorf("notificationsCC:" + err.Error())
 		}

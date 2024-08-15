@@ -102,7 +102,7 @@ func getAndSaveFromAPI(cryptoCur []string) (interface{}, error) {
 			CryptoPrice:  qla.QuotesLatestAnswerResults[i].Price,
 			CryptoUpdate: qla.QuotesLatestAnswerResults[i].Last_updated,
 		}
-		cryptoprices, err = caching.WriteCache(caching.CryptoPricesCache, cryptoprices.CryptoId, cryptoprices)
+		cryptoprices, _, err = caching.WriteCache(caching.CryptoPricesCache, cryptoprices.CryptoId, cryptoprices)
 		if err != nil {
 			return nil, err
 		}
