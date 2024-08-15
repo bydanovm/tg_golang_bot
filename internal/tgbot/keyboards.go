@@ -62,7 +62,7 @@ const (
 	LastList  int = 1000
 )
 
-type FuncHandler func(*tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup)
+type FuncHandler func(*tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error)
 type keyboardFeature struct {
 	KeyboardSettings
 	function FuncHandler

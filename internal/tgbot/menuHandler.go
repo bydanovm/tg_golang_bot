@@ -9,6 +9,8 @@ import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
+	"github.com/mbydanov/tg_golang_bot/internal/services"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -29,6 +31,9 @@ type PriceInfo struct {
 
 func menuHandler(update *tgbotapi.Update, bot tgbotapi.BotAPI) {
 	var msg interface{}
+	var err error
+	var ans string
+	var keyboard tgbotapi.InlineKeyboardMarkup
 
 	// Первичная инициализация меню хендлера
 	if !keyboardBot.Init {
@@ -74,7 +79,7 @@ func menuHandler(update *tgbotapi.Update, bot tgbotapi.BotAPI) {
 		if command != "" {
 			pfunc := keyboardBot.GetFunc(command)
 			if pfunc != nil {
-				ans, keyboard := pfunc(update)
+				ans, keyboard, err = pfunc(update)
 				msg_t := tgbotapi.NewMessage(update.Message.Chat.ID,
 					ans)
 				msg_t.ReplyMarkup = &keyboard
@@ -89,7 +94,7 @@ func menuHandler(update *tgbotapi.Update, bot tgbotapi.BotAPI) {
 		}
 		pfunc := keyboardBot.GetFunc(callBackData[0])
 		if pfunc != nil {
-			ans, keyboard := pfunc(update)
+			ans, keyboard, err = pfunc(update)
 			msg_t := tgbotapi.NewEditMessageText(update.CallbackQuery.Message.Chat.ID,
 				update.CallbackQuery.Message.MessageID, ans)
 			msg_t.ReplyMarkup = &keyboard
@@ -103,9 +108,41 @@ func menuHandler(update *tgbotapi.Update, bot tgbotapi.BotAPI) {
 	case tgbotapi.MessageConfig:
 		bot.Send(msgConv)
 	}
+
+	// Логирование
+	// Получаем инфо о пользователе
+	userInfo := FindUserIdFromUpdate(update)
+	// Получаем инфо о состоянии menuCache
+	menuCache, _ := caching.GetCacheByIdxInMap(MenuCache, userInfo.IdUsr)
+	// Получить команду
+	var command, callBackData, text string
+	if update.Message != nil {
+		command = update.Message.Command()
+		text = update.Message.Text
+	}
+	// Получить каллбек
+	if update.CallbackQuery != nil {
+		callBackData = update.CallbackQuery.Data
+	}
+	services.Logging.WithFields(logrus.Fields{
+		"module": "menuHandler",
+		"user": logrus.Fields{
+			"userInfo": userInfo,
+			"userCtrl": logrus.Fields{
+				"menuCache":    menuCache,
+				"command":      command,
+				"callBackData": callBackData,
+				"text":         text,
+			},
+		},
+		"error": func(err error) interface{} {
+			// if err
+			return err
+		}(err),
+	}).Info()
 }
 
-func funcGetCrypto(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+func funcGetCrypto(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
 	var isMode int
 	// Вычислим offset по значению из кеша
 	offset := 10
@@ -113,7 +150,7 @@ func funcGetCrypto(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inlin
 	// Вызов может поступить из другого пункта меню, проверяем наличие в кеше
 	menuCache, _ := caching.GetCacheByIdxInMap(MenuCache, userInfo.IdUsr, 0)
 	// if err != nil {
-	// 	return ans, keyboard
+	// 	return ans, keyboard, err
 	// }
 	if menuCache.OffsetNavi > 10 {
 		offset = menuCache.OffsetNavi
@@ -132,8 +169,8 @@ func funcGetCrypto(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inlin
 			callBackData[0] = keyboardBot.buttons.GetParentNode(callBackData[0]).Name
 			pfunc := keyboardBot.GetFunc(callBackData[0])
 			if pfunc != nil {
-				ans, keyboard = pfunc(update)
-				return ans, keyboard
+				ans, keyboard, err = pfunc(update)
+				return ans, keyboard, err
 			}
 		}
 	}
@@ -149,24 +186,24 @@ func funcGetCrypto(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inlin
 	}
 	ans = cChooseGetCrypto
 	keyboard = ConvertToButtonInlineKeyboard(listButtons, callBackData[0], 3, isMode)
-	return ans, keyboard
+	return ans, keyboard, err
 }
 
-func funcGetCryptoCurr(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+func funcGetCryptoCurr(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
 	callBackData, err := checkCallbackData(update, 2)
 	if err != nil {
-		return ans, keyboard
+		return ans, keyboard, err
 	}
 
 	id, err := strconv.Atoi(callBackData[1])
 	if err != nil {
-		return ans, keyboard
+		return ans, keyboard, err
 	}
 
 	crypto, err := caching.GetCacheByIdxInMap(caching.CryptoCache, id, 0)
 	if err != nil {
-		ans = fmt.Sprintf("%s %s", crypto.CryptoName, "не найдена в базе")
-		return ans, keyboard
+		err = fmt.Errorf("%s %s %s", crypto.CryptoName, "не найдена в базе", err.Error())
+		return ans, keyboard, err
 	}
 
 	userInfo := FindUserIdFromUpdate(update)
@@ -180,27 +217,31 @@ func funcGetCryptoCurr(update *tgbotapi.Update) (ans string, keyboard tgbotapi.I
 		crypto.CryptoLastPrice,
 		"$")
 	keyboard = MenuToInlineFromNode(callBackData[0], 2)
-	return ans, keyboard
+	return ans, keyboard, err
 }
 
-func funcGetNotif(update *tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup) {
-	ans := "Текущие отслеживания"
+func funcGetNotif(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
+	ans = "Текущие отслеживания"
 	// Вывести от новых к старым в формате Валюта - Значение
 	trackings, _ := caching.GetCacheRecordsKeyChain(caching.TrackingCache, update.CallbackQuery.From.ID, true)
 	// Создание списка кнопок
 	listButtons := make([]buttonInfo, 0, 10)
 	for _, v := range trackings {
-		infoCurrency, _ := caching.GetCacheByIdxInMap(caching.CryptoCache, v.DctCrpId, 0)
+		infoCurrency, er := caching.GetCacheByIdxInMap(caching.CryptoCache, v.DctCrpId, 0)
+		if er != nil {
+			err = fmt.Errorf("funcGetNotif: %s", er.Error())
+			return ans, keyboard, err
+		}
 		listButtons = append(listButtons, buttonInfo{infoCurrency.CryptoName + " - " + fmt.Sprintf(FormatFloatToString(v.ValTrkCrp), v.ValTrkCrp) + " $", GetNotifId + "_" + fmt.Sprintf("%d", v.IdTrkCrp)})
 	}
-	keyboard := ConvertToButtonInlineKeyboard(listButtons, GetNotif, 3)
-	return ans, keyboard
+	keyboard = ConvertToButtonInlineKeyboard(listButtons, GetNotif, 3)
+	return ans, keyboard, err
 }
 
-func funcGetNotifId(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+func funcGetNotifId(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
 	callBackData := strings.Split(update.CallbackQuery.Data, "_")
 	if len(callBackData) < 2 {
-		return ans, keyboard
+		return ans, keyboard, err
 	}
 	userInfo := FindUserIdFromUpdate(update)
 
@@ -216,34 +257,34 @@ func funcGetNotifId(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inli
 
 	keyboard = MenuToInlineFromNode(GetNotifId, 2)
 
-	return ans, keyboard
+	return ans, keyboard, err
 }
 
-func funcGetNotifIdOn(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+func funcGetNotifIdOn(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
 	userInfo := FindUserIdFromUpdate(update)
 
-	_, err := caching.GetCache(MenuCache, userInfo.IdUsr)
+	_, err = caching.GetCache(MenuCache, userInfo.IdUsr)
 	if err != nil {
-		return ans, keyboard
+		return ans, keyboard, err
 	}
 
 	ans = сGetNotifIdOn
 	keyboard = MenuToInlineFromNode(GetNotifIdOn, 2)
 
-	return ans, keyboard
+	return ans, keyboard, err
 }
 
-func funcGetNotifIdOff(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+func funcGetNotifIdOff(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
 	ans = сGetNotifIdOff
 	keyboard = MenuToInlineFromNode(GetNotifIdOff, 2)
 
-	return ans, keyboard
+	return ans, keyboard, err
 }
 
-func funcSetNotif(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+func funcSetNotif(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
 	callBackData := strings.Split(update.CallbackQuery.Data, "_")
 	if len(callBackData) < 1 {
-		return ans, keyboard
+		return ans, keyboard, err
 	}
 
 	offset := 10
@@ -253,7 +294,7 @@ func funcSetNotif(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inline
 	// Вызов может поступить из другого пункта меню, проверяем наличие в кеше
 	menuCache, _ := caching.GetCacheByIdxInMap(MenuCache, userInfo.IdUsr, 0)
 	// if err != nil {
-	// 	return ans, keyboard
+	// 	return ans, keyboard, err
 	// }
 	if menuCache.OffsetNavi > 10 {
 		offset = menuCache.OffsetNavi
@@ -271,8 +312,8 @@ func funcSetNotif(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inline
 			callBackData[0] = keyboardBot.buttons.GetParentNode(callBackData[0]).Name
 			pfunc := keyboardBot.GetFunc(callBackData[0])
 			if pfunc != nil {
-				ans, keyboard = pfunc(update)
-				return ans, keyboard
+				ans, keyboard, err = pfunc(update)
+				return ans, keyboard, err
 			}
 		}
 	}
@@ -284,20 +325,20 @@ func funcSetNotif(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inline
 		listButtons = append(listButtons, buttonInfo{v.CryptoName, SetNotifPrice + `_` + strconv.Itoa(v.CryptoId)})
 	}
 	keyboard = ConvertToButtonInlineKeyboard(listButtons, callBackData[0], 3)
-	return ans, keyboard
+	return ans, keyboard, err
 }
 
-func funcSetNotifPrice(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+func funcSetNotifPrice(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
 	callBackData, err := checkCallbackData(update, 2)
 	if err != nil {
-		return ans, keyboard
+		return ans, keyboard, err
 	}
 
 	// Возможно переключить на пакет caching
 	// Пишем в кеш ИД крипты
 	n, err := strconv.Atoi(callBackData[1])
 	if err != nil {
-		return ans, keyboard
+		return ans, keyboard, err
 	}
 	SetNotifCh.SetIdCrypto(int(update.CallbackQuery.Message.Chat.ID), n)
 
@@ -307,7 +348,7 @@ func funcSetNotifPrice(update *tgbotapi.Update) (ans string, keyboard tgbotapi.I
 	if err != nil {
 		// Здесь должна быть обработка ошибки
 		ans += fmt.Sprintf("%s %s", "Выбранная криптовалюта", "не найдена в базе")
-		return ans, keyboard
+		return ans, keyboard, err
 	}
 
 	// Запись в кеш текущей цены
@@ -334,19 +375,19 @@ func funcSetNotifPrice(update *tgbotapi.Update) (ans string, keyboard tgbotapi.I
 	}
 	keyboard = ConvertToButtonInlineKeyboard(listButtons, callBackData[0], 3)
 
-	return ans, keyboard
+	return ans, keyboard, err
 }
 
-func funcSetNotifPriceEnter(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+func funcSetNotifPriceEnter(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
 	callBackData, err := checkCallbackData(update, 2)
 	if err != nil {
-		return ans, keyboard
+		return ans, keyboard, err
 	}
 
 	// Запись в кеш выбранной цены
 	n, err := strconv.ParseFloat(callBackData[1], 32)
 	if err != nil {
-		return ans, keyboard
+		return ans, keyboard, err
 	}
 	SetNotifCh.SetPrice(int(update.CallbackQuery.Message.Chat.ID), float32(n))
 
@@ -366,13 +407,13 @@ func funcSetNotifPriceEnter(update *tgbotapi.Update) (ans string, keyboard tgbot
 
 	keyboard = MenuToInlineFromNode(SetNotifPriceEnter, 2)
 
-	return ans, keyboard
+	return ans, keyboard, err
 }
 
-func funcSetNotifYes(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+func funcSetNotifYes(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
 	callBackData, err := checkCallbackData(update, 1)
 	if err != nil {
-		return ans, keyboard
+		return ans, keyboard, err
 	}
 
 	// Считывание из кеша всего объекта
@@ -414,13 +455,13 @@ func funcSetNotifYes(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inl
 	// Запись в кеш
 	keyboard = MenuToInlineFromNode(callBackData[0], 2)
 
-	return ans, keyboard
+	return ans, keyboard, err
 }
 
-func funcSetNotifNo(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup) {
+func funcSetNotifNo(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
 	callBackData, err := checkCallbackData(update, 1)
 	if err != nil {
-		return ans, keyboard
+		return ans, keyboard, err
 	}
 
 	ans = "Отслеживание не сохранено\n"
@@ -428,12 +469,12 @@ func funcSetNotifNo(update *tgbotapi.Update) (ans string, keyboard tgbotapi.Inli
 	//Надо чистить елемент мапы
 
 	keyboard = MenuToInlineFromNode(callBackData[0], 2)
-	return ans, keyboard
+	return ans, keyboard, err
 }
 
-func funcMenuStart(update *tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup) {
-	ans := "Привет! Я - " + os.Getenv("BOT_NAME") + " помогу тебе знать актуальную информацию по криптовалюте\n" +
+func funcMenuStart(update *tgbotapi.Update) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
+	ans = "Привет! Я - " + os.Getenv("BOT_NAME") + " помогу тебе знать актуальную информацию по криптовалюте\n" +
 		"Используй кнопки ниже, чтобы узнать интересующую информацию.\n"
-	keyboard := MenuToInlineFromNode(Start, 2)
-	return ans, keyboard
+	keyboard = MenuToInlineFromNode(Start, 2)
+	return ans, keyboard, err
 }
