@@ -43,7 +43,7 @@ services:
       dockerfile: ./Dockerfile
       labels:
         com.tg_golang_bot.name: "${BOT_NAME}"
-        com.tg_golang_bot.version: "0.0.8.9"
+        com.tg_golang_bot.version: "0.0.9.5"
     volumes:
       - logs:/logs/
     ports:
