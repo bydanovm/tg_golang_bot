@@ -17,15 +17,11 @@ import (
 
 // Создаем бота
 func TelegramBot(chanModules chan models.StatusChannel) {
-	// var msg interface{}
 	// Создаем бота
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TOKEN"))
 	if err != nil {
 		services.Logging.Panic(err.Error())
 	}
-
-	// keyboardBot := initMenu()
-	// Инициализация меню
 
 	// Устанавливаем время обновления
 	u := tgbotapi.NewUpdate(0)
@@ -75,35 +71,7 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 			}).Error(err.Error())
 		}
 		menuHandler(&update, *bot)
-		// msg = menuGetCrypto(&update, keyboardBot)
-		// if msg == nil {
-		// 	msg = menuNotification(&update, keyboardBot)
-		// }
 
-		// var command = ""
-
-		// if update.Message != nil {
-		// 	command = update.Message.Command()
-		// 	if command != "" {
-		// 		// Обработка команд
-		// 		// start - Начало
-		// 		// number_of_users - Получить количество активных пользователей
-		// 		// getcrypto - Получить актуальную информацию по криптовалюте
-		// 		// setnotif - Установить уведомления по изменению цены криптовалюты
-		// 		switch command {
-		// 		case Start:
-		// 			// Проверяем есть ли пользователь в кеше или базе
-		// 			// msg = menuStart(&update, keyboardBot)
-		// 		default:
-		// 			// ans := "Команда /" + command + " не найдена.\n" +
-		// 			// 	"Воспользуйся командой /" + Start + " для знакомства со мной."
-
-		// 			// Отправлем сообщение
-		// 			// msg = tgbotapi.NewMessage(database.UsersCache.GetChatId(update.Message.From.ID),
-		// 			// 	ans)
-		// 		}
-		// 	}
-		// }
 		if update.CallbackQuery != nil {
 			// Проверка команд
 			callback := tgbotapi.NewCallback(update.CallbackQuery.ID, "")
@@ -116,22 +84,7 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 					"command":  update.CallbackQuery.Data,
 				}).Error()
 			}
-			// Разберем data callback по структуре command_cryptocur
-			// callBackData := strings.Split(update.CallbackQuery.Data, "_")
-			// Получение инфо о крипте
-			// if len(callBackData) == 1 {
-			// 	if callBackData[0] == Start {
-			// 		msg = menuStart(&update, keyboardBot)
-			// 	}
-			// }
 		}
-
-		// switch msgConv := msg.(type) {
-		// case tgbotapi.EditMessageTextConfig:
-		// 	bot.Send(msgConv)
-		// case tgbotapi.MessageConfig:
-		// 	bot.Send(msgConv)
-		// }
 	}
 }
 
