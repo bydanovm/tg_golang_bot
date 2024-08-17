@@ -62,7 +62,7 @@ const (
 	LastList  int = 1000
 )
 
-type FuncHandler func(*tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error)
+type FuncHandler func(*UpdateBot) (string, tgbotapi.InlineKeyboardMarkup, error)
 type keyboardFeature struct {
 	KeyboardSettings
 	function FuncHandler
@@ -115,11 +115,11 @@ func (tgm *tgBotMenu) Add(name, desc, parentId string, settings KeyboardSettings
 	}
 }
 
-func (tgm *tgBotMenu) GetFunc(name string) FuncHandler {
-	if _, ok := tgm.feature[name]; !ok {
+func (tgm *tgBotMenu) GetFunc(name []string) FuncHandler {
+	if _, ok := tgm.feature[name[0]]; !ok {
 		return nil
 	}
-	return tgm.feature[name].function
+	return tgm.feature[name[0]].function
 }
 
 func (tgm *tgBotMenu) GetMultiPage(name string) bool {
