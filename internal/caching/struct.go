@@ -170,6 +170,7 @@ func (uc *Cache[T]) Set(k int, val T, duration time.Duration) {
 	_, ok := uc.items[k]
 	uc.mu.RUnlock()
 	primaryKey, _ := models.GetStructInfoPK(val)
+	primaryKey.StructValue = k
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 	if !ok {

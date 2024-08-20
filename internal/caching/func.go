@@ -3,6 +3,7 @@ package caching
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -383,15 +384,38 @@ func WriteCache[T iCacheble](link iCacher[T], k int, object T) (retObject T, id 
 		return retObject, -1, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
 	}
 
+	// Считывание добавленной записи из БД
+	primaryKey, err := models.GetStructInfoPK(object)
+	if err != nil {
+		return retObject, -1, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+	}
+	expLst := []database.Expressions{
+		{Key: primaryKey.StructNameFields, Operator: database.EQ, Value: func(interface{}) (out string) {
+			if n, ok := idw.(int64); ok {
+				out = strconv.Itoa(int(n))
+			}
+			return out
+		}(idw)},
+	}
+	structType := &Item[T]{}
+	structType.value = make([]T, 1)
+	objectV := &structType.value[0]
+	rs, _, err := database.ReadData(objectV, expLst, 1)
+	if err != nil {
+		return retObject, -1, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+	}
+
 	// Запись к кеш
-	switch idConv := idw.(type) {
-	case interface{}:
-		switch idInt := idConv.(type) {
-		case int64:
-			SetCache(link, int(idInt), data, 0)
-			id = idInt
-		default:
-			SetCache(link, k, data, 0)
+	for k, v := range rs {
+		switch idConv := idw.(type) {
+		case interface{}:
+			switch idInt := idConv.(type) {
+			case int64:
+				SetCache(link, int(idInt), *v, 0)
+				id = idInt
+			default:
+				SetCache(link, k, *v, 0)
+			}
 		}
 	}
 	// SetCache(link, int(id), data, 0)
