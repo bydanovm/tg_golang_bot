@@ -34,6 +34,7 @@ type fieldInfo struct {
 	StructTagIsFKey  string
 	StructTagIsMiss  string
 	StructTagIsIncr  string
+	StructTagIsSort  string
 	StructValue      interface{}
 }
 type StructInfo struct {
@@ -67,6 +68,7 @@ func (s *StructInfo) GetFieldInfo(in interface{}) error {
 			StructTagIsFKey:  tag.Get("fkey"),
 			StructTagIsMiss:  tag.Get("miss"),
 			StructTagIsIncr:  tag.Get("incr"),
+			StructTagIsSort:  tag.Get("sortkey"),
 			StructValue:      structValue}
 	}
 	s.StructFieldInfo = fieldInfoMap
@@ -134,6 +136,21 @@ func (s *StructInfo) GetIncrement() (field fieldInfo, err error) {
 	}
 	if field.StructNameFields == "" {
 		err = fmt.Errorf("GetIncrement:Incr is not found")
+	}
+
+	return field, err
+}
+
+// Получить доп. поле для сортировки
+func (s *StructInfo) GetSortKey() (field fieldInfo, err error) {
+	for _, v := range s.StructFieldInfo {
+		if v.StructTagIsSort == "YES" {
+			field = v
+			break
+		}
+	}
+	if field.StructNameFields == "" {
+		err = fmt.Errorf("GetSortKey:Sort is not found")
 	}
 
 	return field, err

@@ -35,8 +35,8 @@ type Cache[T iCacheble] struct {
 	defaultExpiration time.Duration // Время жизни
 	cleanupInterval   time.Duration // Интервал очистки
 	items             map[int]Item[T]
-	keys              []int
-	keysMap           map[interface{}][]interface{}
+	keysSort          map[string][]int
+	keysMap           []map[interface{}][]interface{}
 }
 
 // Инициализация кеша
@@ -45,7 +45,9 @@ func Init[T iCacheble](defaultExpiration, cleanupInterval time.Duration) *Cache[
 		items:             make(map[int]Item[T]),
 		defaultExpiration: defaultExpiration,
 		cleanupInterval:   cleanupInterval,
-		keysMap:           make(map[interface{}][]interface{}),
+		keysSort:          make(map[string][]int),
+		keysMap:           make([]map[interface{}][]interface{}, 3),
+		// keysMap:           make([]map[interface{}][]interface{}, 3),
 	}
 	if cleanupInterval > 0 {
 		cache.startCleaner()
@@ -117,8 +119,13 @@ func (uc *Cache[T]) GetByIdxInMap(k int, idx int) (res T, ok bool) {
 
 	return res, ok
 }
-func (uc *Cache[T]) GetKeyByIdx(idx int) (key int) {
-	return uc.keys[idx]
+func (uc *Cache[T]) GetKeyByIdx(sort string, idx int) (key int) {
+	if v, ok := uc.keysSort[sort]; ok {
+		if len(v) > idx {
+			key = v[idx]
+		}
+	}
+	return uc.keysSort[sort][idx]
 }
 
 // Возврат связки ключей map[FK][]PK
@@ -126,7 +133,20 @@ func (uc *Cache[T]) GetKeyChain(in interface{}) []interface{} {
 	uc.mu.RLock()
 	defer uc.mu.RUnlock()
 
-	v, ok := uc.keysMap[in]
+	v, ok := uc.keysMap[0][in]
+	if !ok {
+		return nil
+	}
+
+	return v
+}
+
+// Возврат связки ключей map[FK][]PK для доп сортировки
+func (uc *Cache[T]) GetKeyChainSort(in interface{}) []interface{} {
+	uc.mu.RLock()
+	defer uc.mu.RUnlock()
+
+	v, ok := uc.keysMap[1][in]
 	if !ok {
 		return nil
 	}
@@ -149,12 +169,24 @@ func (uc *Cache[T]) Set(k int, val T, duration time.Duration) {
 	uc.mu.RLock()
 	_, ok := uc.items[k]
 	uc.mu.RUnlock()
-	if !ok {
-		uc.keys = append(uc.keys, k)
-		sort.Slice(uc.keys, func(i, j int) bool { return uc.keys[i] < uc.keys[j] })
-	}
+	primaryKey, _ := models.GetStructInfoPK(val)
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
+	if !ok {
+		uc.keysSort[primaryKey.StructNameFields] = append(uc.keysSort[primaryKey.StructNameFields], k)
+		sort.Slice(uc.keysSort[primaryKey.StructNameFields], func(i, j int) bool {
+			return uc.keysSort[primaryKey.StructNameFields][i] < uc.keysSort[primaryKey.StructNameFields][j]
+		})
+		sortKey, err := models.GetStructInfoSort(val)
+		if err == nil {
+			if n, ok := sortKey.StructValue.(int); ok && n > 0 {
+				uc.keysSort[sortKey.StructNameFields] = append(uc.keysSort[sortKey.StructNameFields], n)
+				sort.Slice(uc.keysSort[sortKey.StructNameFields], func(i, j int) bool {
+					return uc.keysSort[sortKey.StructNameFields][i] < uc.keysSort[sortKey.StructNameFields][j]
+				})
+			}
+		}
+	}
 
 	uc.items[k] = Item[T]{
 		value:      []T{val},
@@ -163,10 +195,21 @@ func (uc *Cache[T]) Set(k int, val T, duration time.Duration) {
 	}
 
 	// Добавление ключа связки PK <-> FK
-	primaryKey, _ := models.GetStructInfoPK(val)
 	foreignKey, err := models.GetStructInfoFK(val)
 	if err == nil {
-		uc.keysMap[foreignKey.StructValue] = append(uc.keysMap[foreignKey.StructValue], primaryKey.StructValue)
+		// map[interface{}][]interface{}
+		if uc.keysMap[0] == nil {
+			uc.keysMap[0] = make(map[interface{}][]interface{})
+		}
+		uc.keysMap[0][foreignKey.StructValue] = append(uc.keysMap[0][foreignKey.StructValue], primaryKey.StructValue)
+	}
+	// Добавление доп сортировки
+	sortKey, err := models.GetStructInfoSort(val)
+	if err == nil {
+		if uc.keysMap[1] == nil {
+			uc.keysMap[1] = make(map[interface{}][]interface{})
+		}
+		uc.keysMap[1][sortKey.StructValue] = append(uc.keysMap[1][sortKey.StructValue], primaryKey.StructValue)
 	}
 
 }
@@ -204,15 +247,19 @@ func (uc *Cache[T]) Update(k int, val T) {
 func (uc *Cache[T]) Delete(k int) {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
-	// if _, ok := uc.items[k]; ok {
-	delete(uc.items, k)
-	// }
-	// Удаляем ключ из слайса
-	for idx, v := range uc.keys {
-		if v == k {
-			uc.keys = append(uc.keys[:idx], uc.keys[idx+1:]...)
-			break
+	if v, ok := uc.items[k]; ok {
+		primaryKey, _ := models.GetStructInfoPK(v.value[0])
+		delete(uc.items, k)
+		// Удаляем ключ из слайса
+		if v1, ok1 := uc.keysSort[primaryKey.StructNameFields]; ok1 {
+			for idx, val := range v1 {
+				if val == k {
+					uc.keysSort[primaryKey.StructNameFields] = append(uc.keysSort[primaryKey.StructNameFields][:idx], uc.keysSort[primaryKey.StructNameFields][idx+1:]...)
+					break
+				}
+			}
 		}
+
 	}
 }
 
@@ -247,7 +294,19 @@ func (uc *Cache[T]) DropByIdx(k int, idx int) {
 }
 
 func (uc *Cache[T]) GetCacheCountRecord() int {
-	return len(uc.keys)
+	structType := &Item[T]{}
+	structType.value = make([]T, 1)
+	object := &structType.value[0]
+	primaryKey, _ := models.GetStructInfoPK(object)
+	return len(uc.keysSort[primaryKey.StructNameFields])
+}
+
+func (uc *Cache[T]) GetCacheSortCountRecord() int {
+	structType := &Item[T]{}
+	structType.value = make([]T, 1)
+	object := &structType.value[0]
+	sortKey, _ := models.GetStructInfoSort(object)
+	return len(uc.keysSort[sortKey.StructNameFields])
 }
 
 func (uc *Cache[T]) startCleaner() {

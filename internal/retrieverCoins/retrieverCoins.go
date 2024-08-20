@@ -115,7 +115,8 @@ func getAndSaveFromAPI(cryptoCur []string) (interface{}, error) {
 
 		// Обновляем запись в кеше и БД
 		currency.CryptoLastPrice = cryptoprices.CryptoPrice
-		// currency.CryptoUpdate = dateTime // Время обновления как TS
+		currency.CryptoRank = qla.QuotesLatestAnswerResults[i].Cmc_rank
+		currency.CryptoUpdate = qla.QuotesLatestAnswerResults[i].Last_updated
 		currency, err = caching.UpdateCacheRecord(caching.CryptoCache, currency.CryptoId, currency)
 		if err != nil {
 			return nil, fmt.Errorf("getAndSaveFromAPI:" + err.Error())
@@ -133,6 +134,7 @@ func getAndSaveFromAPI(cryptoCur []string) (interface{}, error) {
 			CryptoUpdate:    time.Now(),
 			Active:          true,
 			CryptoCounter:   0,
+			CryptoRank:      qla.QuotesLatestAnswerResults[i].Cmc_rank,
 		}
 		bufferForNotifMap[qla.QuotesLatestAnswerResults[i].Id] = bufferForNotif
 	}

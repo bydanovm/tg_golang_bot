@@ -71,12 +71,26 @@ func GetStructInfoFK(in interface{}) (fInfo fieldInfo, err error) {
 	structInfo := StructInfo{}
 	// Определяем информацию по структуре
 	if err = structInfo.GetFieldInfo(in); err != nil {
-		return fInfo, fmt.Errorf("GetStructInfoPK:" + err.Error())
+		return fInfo, fmt.Errorf("GetStructInfoFK:" + err.Error())
 	}
 	// Получаем FK
 	fInfo, err = structInfo.GetForeignKey()
 	if err != nil {
-		return fInfo, fmt.Errorf("GetStructInfoPK:" + err.Error())
+		return fInfo, fmt.Errorf("GetStructInfoFK:" + err.Error())
+	}
+
+	return fInfo, err
+}
+func GetStructInfoSort(in interface{}) (fInfo fieldInfo, err error) {
+	structInfo := StructInfo{}
+	// Определяем информацию по структуре
+	if err = structInfo.GetFieldInfo(in); err != nil {
+		return fInfo, fmt.Errorf("GetStructInfoSort:" + err.Error())
+	}
+	// Получаем SortKey
+	fInfo, err = structInfo.GetSortKey()
+	if err != nil {
+		return fInfo, fmt.Errorf("GetStructInfoSort:" + err.Error())
 	}
 
 	return fInfo, err

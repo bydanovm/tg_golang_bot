@@ -102,7 +102,8 @@ func FillCache[T iCacheble](link iCacher[T], records int, offset ...int) error {
 	}
 
 	for k, v := range rs {
-		link.Set(k, *v, 0)
+		SetCache(link, k, *v, 0)
+		// link.Set(k, *v, 0)
 	}
 
 	return nil
@@ -113,9 +114,14 @@ func GetCacheCountRecord[T iCacheble](link iCacher[T]) int {
 	return link.GetCacheCountRecord()
 }
 
+// Возврат количества записей в мапе по доп ключу
+func GetCacheSortCountRecord[T iCacheble](link iCacher[T]) int {
+	return link.GetCacheSortCountRecord()
+}
+
 // Возврат ключа по индексу
-func GetCacheKeyByIdx[T iCacheble](link iCacher[T], key int) int {
-	return link.GetKeyByIdx(key)
+func GetCacheKeyByIdx[T iCacheble](link iCacher[T], sort string, key int) int {
+	return link.GetKeyByIdx(sort, key)
 }
 
 // Возврат idx элемента слайса из мапы по ключу k
@@ -137,8 +143,25 @@ func GetCacheKeyChain[T iCacheble](link iCacher[T], in interface{}) []interface{
 	return link.GetKeyChain(in)
 }
 
-func GetCacheElementKeyChain[T iCacheble](link iCacher[T], in interface{}) interface{} {
-	return link.GetKeyChain(in)[0]
+func GetCacheElementKeyChain[T iCacheble](link iCacher[T], in interface{}) (out interface{}) {
+	keyChain := GetCacheKeyChain(link, in)
+	if keyChain != nil {
+		out = keyChain[0]
+	}
+	return out
+}
+
+// Возврат связки ключей map[FK][]PK
+func GetCacheKeyChainSort[T iCacheble](link iCacher[T], in interface{}) []interface{} {
+	return link.GetKeyChainSort(in)
+}
+
+func GetCacheElementKeyChainSort[T iCacheble](link iCacher[T], in interface{}) (out interface{}) {
+	keyChain := GetCacheKeyChainSort(link, in)
+	if keyChain != nil {
+		out = keyChain[0]
+	}
+	return out
 }
 
 // Возврат записей по связке ключей map[FK][]PK с возможностью сортировки
@@ -183,7 +206,7 @@ func GetCacheRecordsKeyChain[T iCacheble](link iCacher[T], in interface{}, sorti
 	return out, err
 }
 
-// Возврат n элементов мапы с offset отсортированному по ключу
+// Возврат n элементов мапы с offset отсортированному по стандартному ключу
 func GetCacheOffset[T iCacheble](link iCacher[T], offset int, recordCnt ...int) (out []T, last bool, err error) {
 	// Стандартно возвращаем по 10 записей
 	var recordCntV int = 10
@@ -200,9 +223,14 @@ func GetCacheOffset[T iCacheble](link iCacher[T], offset int, recordCnt ...int) 
 		last = true
 	}
 
+	structType := &Item[T]{}
+	structType.value = make([]T, 1)
+	object := &structType.value[0]
+	primaryKey, err := models.GetStructInfoPK(object)
+
 	if countRecord > 1 {
 		for i := offset - recordCntV; i < offset; i++ {
-			key := GetCacheKeyByIdx(link, i)
+			key := GetCacheKeyByIdx(link, primaryKey.StructNameFields, i)
 			object, err := GetCacheByIdxInMap(link, key, 0)
 			if err != nil {
 				return out, last, fmt.Errorf("GetCacheOffset:" + err.Error())
@@ -216,13 +244,18 @@ func GetCacheOffset[T iCacheble](link iCacher[T], offset int, recordCnt ...int) 
 	return out, last, err
 }
 
-// Возврат всех элементов мапы отсортированному по ключу
+// Возврат всех элементов мапы отсортированному по стандартному ключу
 func GetCacheAllRecord[T iCacheble](link iCacher[T]) (out []T, err error) {
 	countRecord := GetCacheCountRecord(link)
 
+	structType := &Item[T]{}
+	structType.value = make([]T, 1)
+	object := &structType.value[0]
+	primaryKey, err := models.GetStructInfoPK(object)
+
 	if countRecord > 1 {
 		for i := 0; i < countRecord; i++ {
-			key := GetCacheKeyByIdx(link, i)
+			key := GetCacheKeyByIdx(link, primaryKey.StructNameFields, i)
 			object, err := GetCacheByIdxInMap(link, key, 0)
 			if err != nil {
 				return out, fmt.Errorf("GetCacheAllRecord:" + err.Error())
@@ -235,6 +268,45 @@ func GetCacheAllRecord[T iCacheble](link iCacher[T]) (out []T, err error) {
 
 	return out, err
 
+}
+
+// Возврат n элементов мапы с offset отсортированному по дополнительному ключу
+func GetCacheOffsetSort[T iCacheble](link iCacher[T], offset int, recordCnt ...int) (out []T, last bool, err error) {
+	// Стандартно возвращаем по 10 записей
+	var recordCntV int = 10
+	for _, v := range recordCnt {
+		recordCntV = v
+		break
+	}
+
+	countRecord := GetCacheSortCountRecord(link)
+	if offset < 10 {
+		return nil, false, fmt.Errorf("GetCacheOffsetSort:Offset is small")
+	} else if offset >= countRecord {
+		offset -= (offset - countRecord)
+		last = true
+	}
+
+	structType := &Item[T]{}
+	structType.value = make([]T, 1)
+	object := &structType.value[0]
+	sortKey, err := models.GetStructInfoSort(object)
+
+	if countRecord > 1 {
+		for i := offset - recordCntV; i < offset; i++ {
+			rank := GetCacheKeyByIdx(link, sortKey.StructNameFields, i)
+			keyChainSort := GetCacheElementKeyChainSort(link, rank)
+			object, err := GetCacheByIdxInMap(link, keyChainSort.(int), 0)
+			if err != nil {
+				return out, last, fmt.Errorf("GetCacheOffsetSort:" + err.Error())
+			}
+			out = append(out, object)
+		}
+	} else {
+		return out, last, fmt.Errorf("GetCacheOffsetSort:Len cache is zero")
+	}
+
+	return out, last, err
 }
 
 // Обновление записи

@@ -48,6 +48,7 @@ type DictCrypto struct {
 	CryptoUpdate    time.Time `sql_type:"TIMESTAMP"`
 	Active          bool      `sql_type:"BOOLEAN NOT NULL DEFAULT TRUE"`
 	CryptoCounter   int       `sql_type:"INTEGER NOT NULL DEFAULT 0"`
+	CryptoRank      int       `sql_type:"INTEGER NOT NULL DEFAULT 0" sortkey:"YES"`
 }
 
 // Структура данных таблицы Cryptoprices

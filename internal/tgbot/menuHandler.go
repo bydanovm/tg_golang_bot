@@ -160,7 +160,7 @@ func funcGetCrypto(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKe
 		OffsetNavi:  offset,
 	}, 0)
 
-	listCryptoCur, lastList, _ := caching.GetCacheOffset(caching.CryptoCache, offset)
+	listCryptoCur, lastList, _ := caching.GetCacheOffsetSort(caching.CryptoCache, offset)
 	if lastList {
 		isMode = LastList
 	}

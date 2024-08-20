@@ -8,9 +8,10 @@ type iCacheble interface {
 }
 type iCacher[T any] interface {
 	Get(int) ([]T, bool)
-	GetKeyByIdx(int) int
+	GetKeyByIdx(string, int) int
 	GetByIdxInMap(int, int) (T, bool)
 	GetKeyChain(in interface{}) []interface{}
+	GetKeyChainSort(in interface{}) []interface{}
 	Set(int, T, time.Duration)
 	Add(int, T)
 	Update(k int, val T)
@@ -18,6 +19,7 @@ type iCacher[T any] interface {
 	Pop(int)
 	DropByIdx(int, int)
 	GetCacheCountRecord() int
+	GetCacheSortCountRecord() int
 	URLockU() bool
 	URUnlock() bool
 }
