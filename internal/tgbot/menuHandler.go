@@ -155,10 +155,9 @@ func funcGetCrypto(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKe
 			}
 		}
 	}
-	caching.SetCache(MenuCache, updateBot.User.IdUsr, MenuInfo{
-		CurrentMenu: GetCrypto,
-		OffsetNavi:  offset,
-	}, 0)
+
+	updateBot.Menu.OffsetNavi = offset
+	caching.UpdateCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu)
 
 	listCryptoCur, lastList, _ := caching.GetCacheOffsetSort(caching.CryptoCache, offset)
 	if lastList {
@@ -195,7 +194,7 @@ func funcGetCryptoCurr(updateBot *UpdateBot) (ans string, keyboard tgbotapi.Inli
 	}
 
 	updateBot.Menu.IdCrypto = crypto.CryptoId
-	caching.SetCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu, 0)
+	caching.UpdateCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu)
 
 	ans = fmt.Sprintf("1 %s = "+FormatFloatToString(crypto.CryptoLastPrice)+" %s",
 		crypto.CryptoName,
@@ -206,7 +205,6 @@ func funcGetCryptoCurr(updateBot *UpdateBot) (ans string, keyboard tgbotapi.Inli
 }
 
 func funcGetNotif(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
-	ans = "Текущие отслеживания"
 	// Вывести от новых к старым в формате Валюта - Значение
 	trackings, _ := caching.GetCacheRecordsKeyChain(caching.TrackingCache, updateBot.User.IdUsr, true)
 	// Создание списка кнопок
@@ -219,6 +217,9 @@ func funcGetNotif(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKey
 		}
 		listButtons = append(listButtons, buttonInfo{infoCurrency.CryptoName + " - " + fmt.Sprintf(FormatFloatToString(v.ValTrkCrp), v.ValTrkCrp) + " $", GetNotifId + "_" + fmt.Sprintf("%d", v.IdTrkCrp)})
 	}
+
+	ans = "Текущие отслеживания"
+
 	keyboard = ConvertToButtonInlineKeyboard(listButtons, GetNotif, 3)
 	return ans, keyboard, err
 }
@@ -229,9 +230,9 @@ func funcGetNotifId(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineK
 	infoCurrency, _ := caching.GetCacheByIdxInMap(caching.CryptoCache, infoTracking.DctCrpId, 0)
 	// Считывание типа триггера - добавить
 	// Запись в кеш инфы для операций
-	caching.SetCache(MenuCache, updateBot.User.IdUsr, MenuInfo{
-		IdTracking: infoTracking.IdTrkCrp,
-	}, 0)
+	updateBot.Menu.IdTracking = infoTracking.IdTrkCrp
+	caching.UpdateCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu)
+
 	ans = fmt.Sprintf("Выбрано отслеживание по %s\nТекущая стоимость 1 %s = "+FormatFloatToString(infoTracking.ValTrkCrp)+" $\nТип триггера: %d\nСрабатывание триггера: "+FormatFloatToString(infoTracking.ValTrkCrp)+"\n", infoCurrency.CryptoName, infoCurrency.CryptoName, infoCurrency.CryptoLastPrice, infoTracking.TypTrkCrpId, infoTracking.ValTrkCrp)
 
 	keyboard = MenuToInlineFromNode(GetNotifId, 2)
@@ -278,7 +279,9 @@ func funcSetNotif(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKey
 			}
 		}
 	}
-	caching.SetCache(MenuCache, updateBot.User.IdUsr, MenuInfo{OffsetNavi: offset}, 0)
+
+	updateBot.Menu.OffsetNavi = offset
+	caching.UpdateCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu)
 
 	listCryptoCur, _, _ := caching.GetCacheOffset(caching.CryptoCache, offset)
 	listButtons := make([]buttonInfo, 0, 10)
@@ -291,7 +294,6 @@ func funcSetNotif(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKey
 
 func funcSetNotifPrice(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
 	// Возможно переключить на пакет caching
-	// Пишем в кеш ИД крипты
 	// Случай, когда валюта пришла из другого места
 	if updateBot.Menu.IdCrypto > 0 {
 		updateBot.Data = append(updateBot.Data, strconv.Itoa(updateBot.Menu.IdCrypto))
@@ -300,8 +302,6 @@ func funcSetNotifPrice(updateBot *UpdateBot) (ans string, keyboard tgbotapi.Inli
 	if err != nil {
 		return ans, keyboard, err
 	}
-	SetNotifCh.SetIdCrypto(int(updateBot.User.ChatIdUsr), n)
-
 	ans = cChooseSum
 
 	infoCurrency, err := caching.GetCacheByIdxInMap(caching.CryptoCache, n, 0)
@@ -310,11 +310,11 @@ func funcSetNotifPrice(updateBot *UpdateBot) (ans string, keyboard tgbotapi.Inli
 		ans += fmt.Sprintf("%s %s", "Выбранная криптовалюта", "не найдена в базе")
 		return ans, keyboard, err
 	}
-
-	// Запись в кеш текущей цены
-	SetNotifCh.SetCurrentPrice(int(updateBot.User.ChatIdUsr), infoCurrency.CryptoLastPrice)
-	// Запись в кеш мнемоники криптовалюты
-	SetNotifCh.SetCrypto(int(updateBot.User.ChatIdUsr), infoCurrency.CryptoName)
+	updateBot.Menu.IdCrypto = infoCurrency.CryptoId
+	updateBot.Menu.Crypto = infoCurrency.CryptoName
+	updateBot.Menu.CurrentPrice = infoCurrency.CryptoLastPrice
+	// Запись в кеш ИД, мнемонику и текущую цену
+	caching.UpdateCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu)
 
 	ans += "Выбрана криптовалюта: " + infoCurrency.CryptoName + "\n"
 
@@ -339,26 +339,24 @@ func funcSetNotifPrice(updateBot *UpdateBot) (ans string, keyboard tgbotapi.Inli
 }
 
 func funcSetNotifPriceEnter(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
-	// Запись в кеш выбранной цены
 	n, err := strconv.ParseFloat(updateBot.Data[1], 32)
 	if err != nil {
 		return ans, keyboard, err
 	}
-	SetNotifCh.SetPrice(int(updateBot.User.ChatIdUsr), float32(n))
+	updateBot.Menu.Price = float32(n)
 
 	// Определяем и записываем критерий (тип триггера)
 	idType := 0
-	if SetNotifCh.GetCurrentPrice(int(updateBot.User.ChatIdUsr)) <= float32(n) {
+	if updateBot.Menu.CurrentPrice <= float32(n) {
 		idType = caching.GetCacheElementKeyChain(caching.TrackingTypeCache, "RAISE_V").(int)
 	} else {
 		idType = caching.GetCacheElementKeyChain(caching.TrackingTypeCache, "FALL_V").(int)
 	}
-	SetNotifCh.SetCriterion(int(updateBot.User.ChatIdUsr), idType)
+	updateBot.Menu.IdCriterion = idType
 
-	// Считывание из кеша всего объекта
-	setNotif := SetNotifCh.GetObject(int(updateBot.User.ChatIdUsr))
+	caching.UpdateCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu)
 
-	ans = fmt.Sprintf("Создается отсеживание:\nВалюта - %s\nЦена - %.9f", setNotif.Crypto, setNotif.Price)
+	ans = fmt.Sprintf("Создается отсеживание:\nВалюта - %s\nЦена - %.9f", updateBot.Menu.Crypto, updateBot.Menu.Price)
 
 	keyboard = MenuToInlineFromNode(SetNotifPriceEnter, 2)
 
@@ -366,11 +364,6 @@ func funcSetNotifPriceEnter(updateBot *UpdateBot) (ans string, keyboard tgbotapi
 }
 
 func funcSetNotifYes(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
-	// Считывание из кеша всего объекта
-	setNotif := SetNotifCh.GetObject(int(updateBot.User.ChatIdUsr))
-
-	// Найти Тип отслеживания
-	idType := setNotif.IdCriterion
 	// Установка лимита
 	limit := database.Limits{}
 	if ans == "" {
@@ -390,19 +383,22 @@ func funcSetNotifYes(updateBot *UpdateBot) (ans string, keyboard tgbotapi.Inline
 	}
 
 	tracking := database.TrackingCrypto{
-		DctCrpId:    setNotif.IdCrypto,
-		TypTrkCrpId: idType,
+		DctCrpId:    updateBot.Menu.IdCrypto,
+		TypTrkCrpId: updateBot.Menu.IdCriterion,
 		LmtId:       limit.IdLmt,
 		UserId:      updateBot.User.IdUsr,
-		ValTrkCrp:   SetNotifCh.GetPrice(int(updateBot.User.ChatIdUsr)),
+		ValTrkCrp:   updateBot.Menu.Price,
 		OnTrkCrp:    true,
 	}
 	if _, _, err := caching.WriteCache(caching.TrackingCache, 0, tracking); err != nil {
 		ans += fmt.Sprintf("tgbot:%s\n", err.Error())
 	} else {
-		ans += fmt.Sprintf("Отслеживание по криптовалюте %s успешно добавлено\n", SetNotifCh.GetCrypto(int(updateBot.User.ChatIdUsr)))
+		ans += fmt.Sprintf("Отслеживание по криптовалюте %s успешно добавлено\n", updateBot.Menu.Crypto)
 	}
-	// Запись в кеш
+
+	// Очистка данных о КВ в меню
+	clearSetNotifMenuCache(updateBot)
+
 	keyboard = MenuToInlineFromNode(updateBot.Data[0], 2)
 
 	return ans, keyboard, err
@@ -411,7 +407,9 @@ func funcSetNotifYes(updateBot *UpdateBot) (ans string, keyboard tgbotapi.Inline
 func funcSetNotifNo(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
 	ans = "Отслеживание не сохранено\n"
 
-	//Надо чистить елемент мапы
+	// Очистка данных о КВ в меню
+	clearSetNotifMenuCache(updateBot)
+
 	keyboard = MenuToInlineFromNode(updateBot.Data[0], 2)
 	return ans, keyboard, err
 }

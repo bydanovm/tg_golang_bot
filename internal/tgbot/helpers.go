@@ -83,3 +83,14 @@ func checkCallbackData(update *tgbotapi.Update, size int) ([]string, error) {
 	}
 	return callBackData, nil
 }
+
+func clearSetNotifMenuCache(updateBot *UpdateBot) {
+	// Очистка данных о КВ
+	updateBot.Menu.IdCrypto = 0
+	updateBot.Menu.IdCriterion = 0
+	updateBot.Menu.CurrentPrice = 0
+	updateBot.Menu.OffsetNavi = 0
+	updateBot.Menu.Price = 0
+	updateBot.Menu.Crypto = ""
+	caching.SetCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu, 0)
+}

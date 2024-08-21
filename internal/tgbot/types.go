@@ -11,7 +11,7 @@ import (
 
 type UserInfo = database.Users
 
-var MenuCache = caching.Init[MenuInfo](time.Minute*5, time.Hour*12)
+var MenuCache = caching.Init[MenuInfo](time.Minute*5, time.Second*150)
 
 type MenuInfo struct {
 	Crypto       string
@@ -46,6 +46,12 @@ func (ub *UpdateBot) FillInfo(update *tgbotapi.Update) (err error) {
 		}
 	} else if update.CallbackQuery != nil {
 		ub.Data = strings.Split(update.CallbackQuery.Data, "_")
+	}
+
+	// Пишем текущее нахождение пользователя в меню
+	if len(ub.Data) >= 1 && ub.Data != nil {
+		ub.Menu.CurrentMenu = ub.Data[0]
+		caching.SetCache(MenuCache, ub.User.IdUsr, ub.Menu, 0)
 	}
 
 	return nil

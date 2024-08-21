@@ -116,6 +116,9 @@ func (tgm *tgBotMenu) Add(name, desc, parentId string, settings KeyboardSettings
 }
 
 func (tgm *tgBotMenu) GetFunc(name []string) FuncHandler {
+	if name == nil {
+		return nil
+	}
 	if _, ok := tgm.feature[name[0]]; !ok {
 		return nil
 	}
