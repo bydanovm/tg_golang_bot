@@ -1,0 +1,69 @@
+= Обработчик меню
+
+Представляет собой конструктор меню с настройкой клавиатуры
+
+.Основная структура 
+[source, golang]
+----
+type tgBotMenu struct {
+	buttons *models.TreeNode
+	feature map[string]keyboardFeature
+	Init    bool
+}
+----
+.Переменные
+[cols="1,2"]
+|===
+|Наименование |Описание 
+|buttons |связанный список объектов
+|feature |мапа содержащая настройки объекта и его функция
+|init |признак инициализации
+|===
+
+.Структура keyboardFeature
+[source, golang]
+----
+type keyboardFeature struct {
+	KeyboardSettings
+	function FuncHandler
+}
+// Настроечная структура
+type KeyboardSettings struct {
+	visible   bool // Видимость
+	multipage bool // Мультистраничность
+	homeBack  bool // Возврат на главную по кнопке назад
+}
+// Функция прототип
+type FuncHandler func(*UpdateBot) (string, tgbotapi.InlineKeyboardMarkup, error)
+----
+
+Инициализация происходит посредством функции initMenu() возвращаемая объект
+
+.Методы
+* `Add(name, desc, parentId string, settings KeyboardSettings, foo ...FuncHandler)` - добавление элемента клавиатуры
+** *Входные данные* - имя, описание, родитель, настройки, функция
+** *Алгоритм* - добавляет элемент в структуру без каких-либо проверок
+* `GetFunc(name []string) FuncHandler` - получение ссылки на функцию элемента клавиатуры
+** *Входные данные* - слайс из имени вызываемого объекта
+** *Алгоритм* - возвращает по первому элементу слайса функцию из мапы при ее наличии
+* `GetMultiPage(name string) bool` - получение настроечного параметра мультистраничного объекта
+** *Входные данные* - имя вызываемого объекта
+** *Алгоритм* - возвращает из мапы признак мультистраничности объекта
+* `GetSetting(name string) KeyboardSettings` - получение структуры настроек элемента клавиатуры
+** *Входные данные* - имя вызываемого объекта
+** *Алгоритм* - возвращает из мапы структуру с настройками
+* `GetMainMenuReplyMarkup() (buttons []tgbotapi.KeyboardButton)` - ???
+* `GetMainMenuInlineMarkupFromNode(node string, mode ...int) (buttons []tgbotapi.InlineKeyboardButton)` - получение сформированных элементов клавиатуры
+** *Входные данные* - имя вызываемого объекта, режим
+** *Алгоритм* - возвращает сформированный слайс элементов. Определяет по настроечным параметрам начало и конец мультистраничности, и кнопку домой
+
+.Функции
+* `MenuToInlineKeyboard(buttons []tgbotapi.InlineKeyboardButton, columns int) (keyboard tgbotapi.InlineKeyboardMarkup)` - получение готовой клавиатуры
+** *Входные данные* - слайс элементов, количество колонок 
+** *Алгоритм* - возвращает готовую клавиатуру из слайса элементов и делит на указанное количество колонок
+* `ConvertToButtonInlineKeyboard(in []buttonInfo, node string, column int, mode ...int) (keyboard tgbotapi.InlineKeyboardMarkup)` - получение готовой клавиатуры из кнопок и имени объекта
+** *Входные данные* - слайс buttonInfo, вызываемый объект, количество колонок, режим
+** *Алгоритм* - возвращает готовую клавиатуру из слайса buttonInfo, делит на указанное количество колонок и добавляет кнопки из вызываемого объекта через метод GetMainMenuInlineMarkupFromNode
+* `MenuToInlineFromNode(node string, column int) tgbotapi.InlineKeyboardMarkup`  - получение готовой клавиатуры из имени объекта и количества колонок
+** *Входные данные* -  вызываемый объект, количество колонок
+** *Алгоритм* - возвращает готовую клавиатуру по именивызываемого объекта и делит на указанное количество колонок
