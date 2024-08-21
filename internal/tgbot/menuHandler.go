@@ -293,14 +293,19 @@ func funcSetNotif(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKey
 }
 
 func funcSetNotifPrice(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKeyboardMarkup, err error) {
+	var n int
 	// Возможно переключить на пакет caching
 	// Случай, когда валюта пришла из другого места
 	if updateBot.Menu.IdCrypto > 0 {
 		updateBot.Data = append(updateBot.Data, strconv.Itoa(updateBot.Menu.IdCrypto))
 	}
-	n, err := strconv.Atoi(updateBot.Data[1])
-	if err != nil {
-		return ans, keyboard, err
+	if len(updateBot.Data) > 1 {
+		n, err = strconv.Atoi(updateBot.Data[1])
+		if err != nil {
+			return ans, keyboard, err
+		}
+	} else {
+		return ans, keyboard, fmt.Errorf("%s %v", "funcSetNotifPrice:len data is low", updateBot.Data)
 	}
 	ans = cChooseSum
 
