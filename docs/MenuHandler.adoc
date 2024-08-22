@@ -67,3 +67,23 @@ type FuncHandler func(*UpdateBot) (string, tgbotapi.InlineKeyboardMarkup, error)
 * `MenuToInlineFromNode(node string, column int) tgbotapi.InlineKeyboardMarkup`  - получение готовой клавиатуры из имени объекта и количества колонок
 ** *Входные данные* -  вызываемый объект, количество колонок
 ** *Алгоритм* - возвращает готовую клавиатуру по именивызываемого объекта и делит на указанное количество колонок
+
+.Пример инициализации
+[source, golang]
+----
+var keyboardBot = initMenu()
+
+// Первичная инициализация меню хендлера
+if !keyboardBot.Init {
+	keyboardBot.Add(Start, "Главная", "", KeyboardSettings{visible: true, multipage: false}, funcMenuStart)
+	...
+	keyboardBot.Init = true
+}
+pfunc := keyboardBot.GetFunc(updateBot.Data)
+if pfunc != nil {
+	ans, keyboard, err = pfunc(&updateBot)
+	if update.Message != nil {
+		...
+	}
+}
+----
