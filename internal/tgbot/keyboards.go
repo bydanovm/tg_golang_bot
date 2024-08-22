@@ -204,26 +204,26 @@ func MenuToInlineKeyboard(buttons []tgbotapi.InlineKeyboardButton, columns int) 
 	row := []tgbotapi.InlineKeyboardButton{}
 	for k, v := range buttons {
 		row = append(row, v)
-		if (k+1)%columns == 0 {
+
+		if len(buttons) == len(row) || len(buttons) == k+1 || len(row) == columns {
 			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
 			row = nil
-		} else if (k+1) == len(buttons) && (k+1)%2 == 1 { // Если последний элемент
-			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
 		}
 	}
 	return keyboard
 }
 
 // Сделать кнопки для InlineKeyboard по имени узла
-func ConvertToButtonInlineKeyboard(in []buttonInfo, node string, column int, mode ...int) (keyboard tgbotapi.InlineKeyboardMarkup) {
+func ConvertToButtonInlineKeyboard(in []buttonInfo, node string, columns int, mode ...int) (keyboard tgbotapi.InlineKeyboardMarkup) {
 
 	var row []tgbotapi.InlineKeyboardButton
 	var modeIs int
-	for k, v := range in {
-		btn := tgbotapi.NewInlineKeyboardButtonData(v.text, v.data)
+
+	for idx, val := range in {
+		btn := tgbotapi.NewInlineKeyboardButtonData(val.text, val.data)
 		row = append(row, btn)
-		// Делим на N строк по column элементов
-		if (k+1)%column == 0 {
+
+		if len(in) == len(row) || len(in) == idx+1 || len(row) == columns {
 			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, row)
 			row = nil
 		}

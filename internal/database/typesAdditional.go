@@ -88,11 +88,20 @@ func checkRecordPK[T any](in T) error {
 	//Выполняем наш SQL запрос
 	var count int
 	err = db.QueryRow(data).Scan(&count)
-	if err != nil {
+	if err != nil || count == 0 {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("QueryRow:Scan:NoRows" + data + ":" + err.Error())
 		}
-		return fmt.Errorf("QueryRow:Scan:" + data + ":" + err.Error())
+		return fmt.Errorf("QueryRow:Scan:" + data + ":" + func(in error) (out string) {
+			if err != nil {
+				out = err.Error()
+			} else if count == 0 {
+				out = "NoRows"
+			} else {
+				out = "OtherError"
+			}
+			return out
+		}(err))
 	}
 
 	return nil
