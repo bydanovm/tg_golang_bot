@@ -217,7 +217,7 @@ func GetCacheOffset[T iCacheble](link iCacher[T], offset int, recordCnt ...int) 
 	}
 
 	countRecord := GetCacheCountRecord(link)
-	if offset < 10 {
+	if offset < recordCntV {
 		return nil, false, fmt.Errorf("GetCacheOffset:Offset is small")
 	} else if offset >= countRecord {
 		offset -= (offset - countRecord)
@@ -281,7 +281,7 @@ func GetCacheOffsetSort[T iCacheble](link iCacher[T], offset int, recordCnt ...i
 	}
 
 	countRecord := GetCacheSortCountRecord(link)
-	if offset < 10 {
+	if offset < recordCntV {
 		return nil, false, fmt.Errorf("GetCacheOffsetSort:Offset is small")
 	} else if offset >= countRecord {
 		offset -= (offset - countRecord)

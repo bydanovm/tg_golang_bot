@@ -40,8 +40,14 @@ func (ub *UpdateBot) FillInfo(update *tgbotapi.Update) (err error) {
 		if command != "" {
 			ub.Data = append(ub.Data, command)
 		} else if update.Message.Text != "" {
-			if ub.Menu.CurrentMenu == GetCrypto {
+			if ub.Menu.CurrentMenu == GetCrypto ||
+				ub.Menu.CurrentMenu == GetCryptoBack ||
+				ub.Menu.CurrentMenu == GetCryptoNext {
 				ub.Data = []string{GetCryptoCurr, update.Message.Text}
+			} else if ub.Menu.CurrentMenu == SetNotif ||
+				ub.Menu.CurrentMenu == SetNotifBack ||
+				ub.Menu.CurrentMenu == SetNotifNext {
+				ub.Data = []string{SetNotifPrice, update.Message.Text}
 			}
 		}
 	} else if update.CallbackQuery != nil {

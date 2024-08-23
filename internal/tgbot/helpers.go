@@ -86,11 +86,6 @@ func checkCallbackData(update *tgbotapi.Update, size int) ([]string, error) {
 
 func clearSetNotifMenuCache(updateBot *UpdateBot) {
 	// Очистка данных о КВ
-	updateBot.Menu.IdCrypto = 0
-	updateBot.Menu.IdCriterion = 0
-	updateBot.Menu.CurrentPrice = 0
-	updateBot.Menu.OffsetNavi = 0
-	updateBot.Menu.Price = 0
-	updateBot.Menu.Crypto = ""
+	updateBot.Menu = MenuInfo{}
 	caching.SetCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu, 0)
 }

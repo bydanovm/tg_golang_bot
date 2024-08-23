@@ -119,20 +119,25 @@ func notificationsCC() (interface{}, error) {
 			currency.CryptoName,
 			fmt.Sprintf("Произошло событие над криптовалютой %s:\n"+
 				typeInfo.DescTypTrkCrp+
-				" на %.3fUSD\nОсталось уведомлений для данного события: %v",
-				currency.CryptoName, tracking.ValTrkCrp, "USD", diff, avalLmt),
+				" на %.3fUSD\nОсталось уведомлений для данного события: %v\n%s",
+				currency.CryptoName, tracking.ValTrkCrp, "USD", diff, avalLmt, func() (out string) {
+					if avalLmt == 0 {
+						out = `Уведомление отключено`
+					}
+					return out
+				}),
 		})
-		if avalLmt == 0 {
-			notifCCStruct = append(notifCCStruct, NotificationsCCStruct{
-				tracking.UserId,
-				user.NameUsr,
-				user.ChatIdUsr,
-				tracking.DctCrpId,
-				currency.CryptoName,
-				fmt.Sprint("Вы можете продлить, изменить и продлить данное отслеживание" +
-					" или создать новое отслеживание"),
-			})
-		}
+		// if avalLmt == 0 {
+		// 	notifCCStruct = append(notifCCStruct, NotificationsCCStruct{
+		// 		tracking.UserId,
+		// 		user.NameUsr,
+		// 		user.ChatIdUsr,
+		// 		tracking.DctCrpId,
+		// 		currency.CryptoName,
+		// 		fmt.Sprint("Вы можете продлить, изменить и продлить данное отслеживание" +
+		// 			" или создать новое отслеживание"),
+		// 	})
+		// }
 	}
 
 	return notifCCStruct, nil
