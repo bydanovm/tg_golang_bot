@@ -1,11 +1,9 @@
 package main
 
 import (
-	"os"
 	"time"
 
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
-	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 	"github.com/mbydanov/tg_golang_bot/internal/notifications"
 	retriever "github.com/mbydanov/tg_golang_bot/internal/retrieverCoins"
@@ -19,13 +17,13 @@ func main() {
 	// Инициализация логирования
 	services.InitLogger()
 	// Создаем таблицу
-	if os.Getenv("CREATE_TABLE") == "yes" {
-		if os.Getenv("DB_SWITCH") == "on" {
-			if err := database.CreateTables(); err != nil {
-				services.Logging.Panic(err.Error())
-			}
-		}
-	}
+	// if os.Getenv("CREATE_TABLE") == "yes" {
+	// 	if os.Getenv("DB_SWITCH") == "on" {
+	// 		if err := database.CreateTables(); err != nil {
+	// 			services.Logging.Panic(err.Error())
+	// 		}
+	// 	}
+	// }
 
 	time.Sleep(2 * time.Second)
 	// chConfig := make(chan config.ConfigStruct)
