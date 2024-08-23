@@ -1,0 +1,43 @@
+= Справочник койн маркетов
+
+.Назначение
+Хранит информацию по койн маркетам (ссылка, название, период опроса, прочая информация) для опроса криптовалют из разных источников для минимизации затрат на платные подписки
+Дополнительно создаются отдельные справочники в рамках данной поставки по хранении информации о ручках и их параметрах
+
+.Структура справочника CoinMarkets
+[source,golang]
+----
+type CoinMarkets struct {
+    IdMrkt     int    `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES"` // ИД
+    Url        string `sql_type:"TEXT NOT NULL"` // Ссылка
+    Desc       string `sql_type:"TEXT NOT NULL"` // Описание
+    HeadApiKey string `sql_type:"TEXT NOT NULL"` // req.Header.Add("X-CMC_PRO_API_KEY", os.Getenv("API_CMC"))
+    HeadAccept string `sql_type:"TEXT NOT NULL"` // req.Header.Set("Accepts", "application/json")
+    HeadContentType string `sql_type:"TEXT NOT NULL"` // req.Header.Add("content-type", "application/json")
+    Timeout    int    `sql_type:"INTEGER DEFAULT 0"` // Период опроса
+}
+----
+
+.Структура справочника CoinMarketsEndpoint
+[source,golang]
+----
+type CoinMarketsEndpoint struct {
+    IdMrktEnd  int    `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES"` // ИД
+    Endpoint   string `sql_type:"TEXT NOT NULL"` // Ресурс ендпоинта
+    Method     string `sql_type:"TEXT NOT NULL"` // Метод опроса
+    Desc       string `sql_type:"TEXT NOT NULL"` // Описание
+	CoinMrktId int    `sql_type:"INTEGER REFERENCES CoinMarkets (idMrkt)"` // ИД койн маркета
+}
+----
+
+.Структура справочника CoinMarketsHand
+[source,golang]
+----
+type CoinMarketsHand struct {
+    IdMrktHand    int    `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES"` // ИД
+    Key           string `sql_type:"TEXT NOT NULL"` // Ключ
+    Type          string `sql_type:"TEXT NOT NULL"` // Тип данных
+    Desc          string `sql_type:"TEXT NOT NULL"` // Описание
+	CoinMrktEndId int    `sql_type:"INTEGER REFERENCES CoinMarketsEndpoint (IdMrktEnd)"` // ИД ендпоинта
+}
+----
