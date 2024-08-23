@@ -180,6 +180,9 @@ func funcGetCryptoCurr(updateBot *UpdateBot) (ans string, keyboard tgbotapi.Inli
 		if v, ok := caching.GetCacheElementKeyChain(caching.CryptoCache, updateBot.Data[1]).(int); ok {
 			id = v
 		} else {
+			// Некорректная валюта -> возврат менюкеша на предыдущее меню
+			updateBot.Menu.CurrentMenu = keyboardBot.buttons.GetParentNode(updateBot.Data[0]).Name
+			caching.SetCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu, 0)
 			return ans, keyboard, err
 		}
 	}
@@ -351,6 +354,9 @@ func funcSetNotifPrice(updateBot *UpdateBot) (ans string, keyboard tgbotapi.Inli
 			if v, ok := caching.GetCacheElementKeyChain(caching.CryptoCache, updateBot.Data[1]).(int); ok {
 				id = v
 			} else {
+				// Некорректная валюта -> возврат менюкеша на предыдущее меню
+				updateBot.Menu.CurrentMenu = keyboardBot.buttons.GetParentNode(updateBot.Data[0]).Name
+				caching.SetCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu, 0)
 				return ans, keyboard, err
 			}
 		}
