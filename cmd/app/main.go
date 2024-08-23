@@ -45,6 +45,10 @@ func main() {
 	caching.FillCache(caching.LimitsCache, 100)
 	// Кешируем словарь лимитов
 	caching.FillCache(caching.LimitsDictCache, 10)
+	// Кешируем коин маркеты
+	caching.FillCache(caching.CoinMarketsCache, 5)
+	caching.FillCache(caching.CoinMarketsEndpointCache, 10)
+	caching.FillCache(caching.CoinMarketsHandCache, 100)
 
 	// Функция считывания настроек из канала
 	// go func() {

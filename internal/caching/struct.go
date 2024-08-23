@@ -21,6 +21,11 @@ var LimitsCache = Init[database.Limits](time.Hour*24, time.Hour*12)
 
 var LimitsDictCache = Init[database.LimitsDict](time.Hour*24*365, 0)
 
+// Кеш коин маркетов
+var CoinMarketsCache = Init[database.CoinMarkets](time.Hour*24*365, 0)
+var CoinMarketsEndpointCache = Init[database.CoinMarketsEndpoint](time.Hour*24*365, 0)
+var CoinMarketsHandCache = Init[database.CoinMarketsHand](time.Hour*24*365, 0)
+
 // Временный кеш с ценами КВ
 var CryptoPricesCache = Init[database.Cryptoprices](time.Minute*5, time.Second*150)
 

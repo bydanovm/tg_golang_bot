@@ -5,10 +5,10 @@ CREATE SEQUENCE coinmarkets_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 ST
 CREATE TABLE "public"."coinmarkets" (
     "idmrkt" integer DEFAULT nextval('coinmarkets_id_seq') NOT NULL,
     "url" TEXT NOT NULL,
-    "desc" TEXT NOT NULL,
-    "headapikey" TEXT,
-    "headaccept" TEXT,
-    "headcontenttype" TEXT,
+    "description" TEXT NOT NULL,
+    "headapikey" TEXT NOT NULL,
+    "headaccept" TEXT NOT NULL,
+    "headcontenttype" TEXT NOT NULL,
     "timeout" INTEGER DEFAULT 0,
     CONSTRAINT "coinmarkets_pkey" PRIMARY KEY ("idmrkt")
 ) WITH (oids = false);
@@ -21,7 +21,7 @@ CREATE TABLE "public"."coinmarketsendpoint" (
     "idmrktend" integer DEFAULT nextval('coinmarketsendpoint_id_seq') NOT NULL,
     "endpoint" TEXT NOT NULL,
     "method" TEXT NOT NULL,
-    "desc" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
     "coinmrktid" INTEGER DEFAULT 0,
     CONSTRAINT "coinmarketsendpoint_pkey" PRIMARY KEY ("idmrktend"),
     CONSTRAINT "coinmarketsendpoint_coinmarkets_fkey" FOREIGN KEY("coinmrktid")
@@ -36,7 +36,7 @@ CREATE TABLE "public"."coinmarketshand" (
     "idmrkthand" integer DEFAULT nextval('coinmarketshand_id_seq') NOT NULL,
     "key" TEXT NOT NULL,
     "type" TEXT NOT NULL,
-    "desc" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
     "coinmrktendid" INTEGER DEFAULT 0,
     CONSTRAINT "coinmarketshand_pkey" PRIMARY KEY ("idmrkthand"),
     CONSTRAINT "coinmarketshand_coinmarketsendpoint_fkey" FOREIGN KEY("coinmrktendid")
