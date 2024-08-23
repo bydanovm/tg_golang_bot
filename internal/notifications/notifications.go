@@ -119,13 +119,13 @@ func notificationsCC() (interface{}, error) {
 			currency.CryptoName,
 			fmt.Sprintf("Произошло событие над криптовалютой %s:\n"+
 				typeInfo.DescTypTrkCrp+
-				" на %.3fUSD\nОсталось уведомлений для данного события: %v\n%s",
+				" на %.3fUSD\nОсталось уведомлений для данного события: %v%s",
 				currency.CryptoName, tracking.ValTrkCrp, "USD", diff, avalLmt, func() (out string) {
 					if avalLmt == 0 {
-						out = `Уведомление отключено`
+						out = "\nУведомление отключено"
 					}
 					return out
-				}),
+				}()),
 		})
 		// if avalLmt == 0 {
 		// 	notifCCStruct = append(notifCCStruct, NotificationsCCStruct{
