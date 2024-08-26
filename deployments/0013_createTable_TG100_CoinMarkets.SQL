@@ -5,6 +5,7 @@ CREATE SEQUENCE coinmarkets_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 ST
 CREATE TABLE "public"."coinmarkets" (
     "idmrkt" integer DEFAULT nextval('coinmarkets_id_seq') NOT NULL,
     "url" TEXT NOT NULL,
+    "shortdesc" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "headapikey" TEXT NOT NULL,
     "headaccept" TEXT NOT NULL,
@@ -36,6 +37,7 @@ CREATE TABLE "public"."coinmarketshand" (
     "idmrkthand" integer DEFAULT nextval('coinmarketshand_id_seq') NOT NULL,
     "key" TEXT NOT NULL,
     "type" TEXT NOT NULL,
+    "value" TEXT NOT NULL,
     "description" TEXT NOT NULL,
     "coinmrktendid" INTEGER DEFAULT 0,
     CONSTRAINT "coinmarketshand_pkey" PRIMARY KEY ("idmrkthand"),

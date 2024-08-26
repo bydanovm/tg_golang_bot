@@ -49,14 +49,14 @@ type DictCrypto struct {
 	Active          bool      `sql_type:"BOOLEAN NOT NULL DEFAULT TRUE"`
 	CryptoCounter   int       `sql_type:"INTEGER NOT NULL DEFAULT 0"`
 	CryptoRank      int       `sql_type:"INTEGER NOT NULL DEFAULT 0" sortkey:"YES"`
-	CoinMrtkId      int       `sql_type:"INTEGER NOT NULL DEFAULT 0"`
+	CoinMrktId      int       `sql_type:"INTEGER NOT NULL DEFAULT 0"`
 }
 
 // Структура данных таблицы Cryptoprices
 type Cryptoprices struct {
-	Id           int       `sql_type:"SERIAL PRIMARY KEY" miss:"YES" incr:"YES"`
+	Id           int       `sql_type:"SERIAL PRIMARY KEY" miss:"YES" incr:"YES" pkey:"YES"`
 	Timestamp    time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
-	CryptoId     int       `sql_type:"INTEGER" pkey:"YES"`
+	CryptoId     int       `sql_type:"INTEGER" fkey:"YES"`
 	CryptoPrice  float32   `sql_type:"NUMERIC(15,9)"`
 	CryptoUpdate time.Time `sql_type:"TIMESTAMP"`
 }
@@ -440,6 +440,7 @@ func (exp *Expressions) JoinForUpdate() string {
 type CoinMarkets struct {
 	IdMrkt          int    `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES"` // ИД
 	Url             string `sql_type:"TEXT NOT NULL"`                            // Ссылка
+	ShortDesc       string `sql_type:"TEXT NOT NULL" fkey:"YES"`                 // Мнемоника
 	Description     string `sql_type:"TEXT NOT NULL"`                            // Описание
 	HeadApiKey      string `sql_type:"TEXT NOT NULL"`                            // req.Header.Add("X-CMC_PRO_API_KEY", os.Getenv("API_CMC"))
 	HeadAccept      string `sql_type:"TEXT NOT NULL"`                            // req.Header.Set("Accepts", "application/json")
@@ -459,6 +460,7 @@ type CoinMarketsHand struct {
 	IdMrktHand    int    `sql_type:"SERIAL PRIMARY KEY" pkey:"YES" incr:"YES"`                       // ИД
 	Key           string `sql_type:"TEXT NOT NULL"`                                                  // Ключ
 	Type          string `sql_type:"TEXT NOT NULL"`                                                  // Тип данных
+	Value         string `sql_type:"TEXT NOT NULL"`                                                  // Значение
 	Description   string `sql_type:"TEXT NOT NULL"`                                                  // Описание
 	CoinMrktEndId int    `sql_type:"INTEGER REFERENCES CoinMarketsEndpoint (IdMrktEnd)"  fkey:"YES"` // ИД ендпоинта
 }

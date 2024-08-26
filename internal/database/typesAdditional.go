@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/lib/pq"
+
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 )
 

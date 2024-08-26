@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	_ "github.com/lib/pq"
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
