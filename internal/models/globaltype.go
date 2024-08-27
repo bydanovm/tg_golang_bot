@@ -35,6 +35,7 @@ type fieldInfo struct {
 	StructTagIsMiss  string
 	StructTagIsIncr  string
 	StructTagIsSort  string
+	StructTagIsExt   string
 	StructValue      interface{}
 }
 type StructInfo struct {
@@ -69,6 +70,7 @@ func (s *StructInfo) GetFieldInfo(in interface{}) error {
 			StructTagIsMiss:  tag.Get("miss"),
 			StructTagIsIncr:  tag.Get("incr"),
 			StructTagIsSort:  tag.Get("sortkey"),
+			StructTagIsExt:   tag.Get("ext"),
 			StructValue:      structValue}
 	}
 	s.StructFieldInfo = fieldInfoMap

@@ -18,6 +18,7 @@ type iCacher[T any] interface {
 	Delete(int)
 	Pop(int)
 	DropByIdx(int, int)
+	DropAll()
 	GetCacheCountRecord() int
 	GetCacheSortCountRecord() int
 	URLockU() bool

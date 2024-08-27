@@ -54,7 +54,7 @@ func getInfoCoins(cryptoCur []string, marketId int, endpointId int) error {
 				CryptoPrice:  item.Rate,
 				CryptoUpdate: time.Now(),
 			}
-			cryptoprices, _, err = caching.WriteCache(caching.CryptoPricesCache, cryptoprices.CryptoId, cryptoprices)
+			cryptoprices, _, err = caching.WriteCache(caching.CryptoPricesCache, cryptoprices.CryptoId, cryptoprices, false)
 			if err != nil {
 				return fmt.Errorf("getInfoCoins:" + err.Error())
 			}

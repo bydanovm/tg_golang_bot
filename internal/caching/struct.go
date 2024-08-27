@@ -27,7 +27,7 @@ var CoinMarketsEndpointCache = Init[database.CoinMarketsEndpoint](time.Hour*24*3
 var CoinMarketsHandCache = Init[database.CoinMarketsHand](time.Hour*24*365, 0)
 
 // Временный кеш с ценами КВ
-var CryptoPricesCache = Init[database.Cryptoprices](time.Minute*5, time.Second*150)
+var CryptoPricesCache = Init[database.Cryptoprices](0, 0)
 
 type Item[T iCacheble] struct {
 	value      []T
@@ -297,6 +297,14 @@ func (uc *Cache[T]) DropByIdx(k int, idx int) {
 			uc.items[k] = item
 		}
 	}
+}
+
+func (uc *Cache[T]) DropAll() {
+	uc.mu.Lock()
+	defer uc.mu.Unlock()
+	uc.items = make(map[int]Item[T])
+	uc.keysMap = make([]map[interface{}][]interface{}, 3)
+	uc.keysSort = make(map[string][]int)
 }
 
 func (uc *Cache[T]) GetCacheCountRecord() int {

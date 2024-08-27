@@ -23,7 +23,7 @@ type quotesLatestAnswerExt struct {
 
 func RunRetrieverCoins(
 	chanModules chan models.StatusChannel) error {
-	timeout := 60
+	timeout := 300
 	var modeluInfo models.StatusChannel
 	for {
 		res, err := retrieverCoins()
@@ -75,8 +75,6 @@ func retrieverCoins() (res interface{}, errSl []error) {
 }
 
 func getAndSaveFromAPI(cryptoCur []string) error {
-	// bufferForNotif := database.DictCrypto{}        // Буфер для посыла в нотификатор
-	// bufferForNotifMap := make(map[int]interface{}) // Буфер для посыла в нотификатор
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest", nil)
 	if err != nil {
@@ -111,7 +109,7 @@ func getAndSaveFromAPI(cryptoCur []string) error {
 			CryptoPrice:  qla.QuotesLatestAnswerResults[i].Price,
 			CryptoUpdate: qla.QuotesLatestAnswerResults[i].Last_updated,
 		}
-		cryptoprices, _, err = caching.WriteCache(caching.CryptoPricesCache, cryptoprices.CryptoId, cryptoprices)
+		cryptoprices, _, err = caching.WriteCache(caching.CryptoPricesCache, cryptoprices.CryptoId, cryptoprices, false)
 		if err != nil {
 			return err
 		}
@@ -133,26 +131,11 @@ func getAndSaveFromAPI(cryptoCur []string) error {
 
 		// Поиск индекса найденной валюты и её удаление из массива needFind
 		cryptoCur = models.FindCellAndDelete(cryptoCur, qla.QuotesLatestAnswerResults[i].Symbol)
-		// Добавление в буфер
-		// bufferForNotif = database.DictCrypto{
-		// 	Id:              0,
-		// 	Timestamp:       time.Now(),
-		// 	CryptoId:        qla.QuotesLatestAnswerResults[i].Id,
-		// 	CryptoName:      qla.QuotesLatestAnswerResults[i].Symbol,
-		// 	CryptoLastPrice: qla.QuotesLatestAnswerResults[i].Price,
-		// 	CryptoUpdate:    time.Now(),
-		// 	Active:          true,
-		// 	CryptoCounter:   0,
-		// 	CryptoRank:      qla.QuotesLatestAnswerResults[i].Cmc_rank,
-		// }
-		// bufferForNotifMap[qla.QuotesLatestAnswerResults[i].Id] = bufferForNotif
 	}
 	// Есть не найденная криптовалюта
 	if len(cryptoCur) != 0 {
-		// return bufferForNotif, errors.New(`Криптовалюта ` + strings.Join(cryptoCur, `, `) + ` не найдена`)
 		return errors.New(`Криптовалюта ` + strings.Join(cryptoCur, `, `) + ` не найдена`)
 	}
-	// return bufferForNotif, nil
 	return nil
 }
 

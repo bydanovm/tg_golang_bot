@@ -27,6 +27,10 @@ func UpdateCache[T iCacheble](link iCacher[T], k int, object T) {
 	link.Update(k, object)
 }
 
+func DropAllCache[T iCacheble](link iCacher[T]) {
+	link.DropAll()
+}
+
 // Проверка и получение первого объекта
 func CheckCacheAndWrite[T iCacheble](link iCacher[T], k int, object T) (retObject T, err error) {
 	// Первая проверка, если в кеше есть - возращаем обьект
@@ -365,7 +369,12 @@ func UpdateCacheRecord[T iCacheble](link iCacher[T], k int, object T) (retObject
 }
 
 // Запись в кеш с записью в БД без проверок на существование
-func WriteCache[T iCacheble](link iCacher[T], k int, object T) (retObject T, id int64, err error) {
+func WriteCache[T iCacheble](link iCacher[T], k int, object T, cacheOn ...bool) (retObject T, id int64, err error) {
+	cache := true
+	for _, item := range cacheOn {
+		cache = item
+		break
+	}
 	// Сериализация для отправки
 	buffer, err := models.MarshalJSON(object)
 	if err != nil {
@@ -406,15 +415,17 @@ func WriteCache[T iCacheble](link iCacher[T], k int, object T) (retObject T, id 
 	}
 
 	// Запись к кеш
-	for k, v := range rs {
-		switch idConv := idw.(type) {
-		case interface{}:
-			switch idInt := idConv.(type) {
-			case int64:
-				SetCache(link, int(idInt), *v, 0)
-				id = idInt
-			default:
-				SetCache(link, k, *v, 0)
+	if cache {
+		for k, v := range rs {
+			switch idConv := idw.(type) {
+			case interface{}:
+				switch idInt := idConv.(type) {
+				case int64:
+					SetCache(link, int(idInt), *v, 0)
+					id = idInt
+				default:
+					SetCache(link, k, *v, 0)
+				}
 			}
 		}
 	}
