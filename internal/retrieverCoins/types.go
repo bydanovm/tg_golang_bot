@@ -1,5 +1,14 @@
 package retrievercoins
 
+import (
+	"sync"
+	"time"
+)
+
+var (
+	wg sync.WaitGroup
+)
+
 // Для определения мнемоники маркета, чтобы не трогать кеш
 type Markets int
 
@@ -28,6 +37,8 @@ func MarketDesc(idx int) string {
 const (
 	List int = iota + 1
 	Map
+	CryptoCurrencyMap
+	QuotesLatest
 )
 
 // Live Coin Watch
@@ -77,4 +88,26 @@ type LCWdelta struct {
 	Month   float32 // rate of change in the last 30 days
 	Quarter float32 // rate of change in the last 90 days
 	Year    float32 // rate of change in the last 365 days
+}
+
+// Coint Market Cap
+
+type status struct {
+	Timestamp     time.Time
+	Error_code    int
+	Error_message string
+	Elapsed       int
+	Credit_count  int
+	Notice        interface{}
+}
+type data struct {
+	Id        int
+	Name      string
+	Symbol    string
+	Slug      string
+	Is_active int
+}
+type CryptoCyrrencyMap struct {
+	Status status
+	Data   []data
 }

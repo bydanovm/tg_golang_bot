@@ -76,7 +76,11 @@ func main() {
 		chanModules)
 	go notifications.RunNotification(
 		chanModules)
+	go retriever.RunUpdaterRank()
 	// Вызываем бота
 	tgbot.TelegramBot(
 		chanModules)
+	// for {
+	// 	<-time.After(time.Hour)
+	// }
 }

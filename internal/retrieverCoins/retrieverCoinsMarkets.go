@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -76,6 +77,10 @@ func getInfoCoins(cryptoCur []string, marketId int, endpointId int) error {
 
 		}
 
+	case int(CoinMarketCap):
+		if err := saveFromCMC(responseBody, cryptoCur); err != nil {
+			return fmt.Errorf("getInfoCoins:" + err.Error())
+		}
 	}
 
 	if len(cryptoCur) != 0 {
@@ -85,7 +90,7 @@ func getInfoCoins(cryptoCur []string, marketId int, endpointId int) error {
 	return nil
 }
 
-func builderRequest(cryptoCur []string, marketId int, endpointId int) (*http.Request, error) {
+func builderRequest(cryptoCur []string, marketId int, endpointId int) (request *http.Request, err error) {
 	// Определить маркет
 	coinMarket, err := caching.GetCacheByIdxInMap(caching.CoinMarketsCache, marketId)
 	if err != nil {
@@ -97,64 +102,65 @@ func builderRequest(cryptoCur []string, marketId int, endpointId int) (*http.Req
 		return nil, fmt.Errorf("%s:%s", "builderRequest", err.Error())
 	}
 	// Определить данные для запроса
-	coinMarketsHand, err := caching.GetCacheRecordsKeyChain(caching.CoinMarketsHandCache, coinMarketEndpoint.IdMrktEnd, true)
+	coinMarketsHand, err := caching.GetCacheRecordsKeyChain(caching.CoinMarketsHandCache, coinMarketEndpoint.IdMrktEnd, false)
 	if err != nil {
 		return nil, fmt.Errorf("%s:%s", "builderRequest", err.Error())
 	}
-	// Начать построение запроса
-	payload := strings.NewReader(`{ ` +
-		func() (out string) {
-			for k, item := range coinMarketsHand {
-				out += `"` + item.Key + `":`
-				switch item.Type {
-				case "string":
-					out += `"` + item.Value + `"`
-				case "number":
-					out += item.Value
-				case "boolean":
-					out += item.Value
-				case "array": // ["ETH","BTC","TON"]
-					if len(cryptoCur) != 0 {
-						out += `["` + strings.Join(cryptoCur, `","`) + `"]`
-					} else if item.Value != "" {
+
+	if coinMarket.IdMrkt == int(LiveCoinWatch) {
+		// Начать построение запроса
+		payload := strings.NewReader(`{ ` +
+			func() (out string) {
+				for k, item := range coinMarketsHand {
+					out += `"` + item.Key + `":`
+					switch item.Type {
+					case "string":
+						out += `"` + item.Value + `"`
+					case "number":
 						out += item.Value
+					case "boolean":
+						out += item.Value
+					case "array": // ["ETH","BTC","TON"]
+						if len(cryptoCur) != 0 {
+							out += `["` + strings.Join(cryptoCur, `","`) + `"]`
+						} else if item.Value != "" {
+							out += item.Value
+						}
+					}
+					if k != len(coinMarketsHand)-1 {
+						out += `,`
 					}
 				}
-				if k != len(coinMarketsHand)-1 {
-					out += `,`
+				return out
+			}() +
+			`}`)
+
+		request, err = http.NewRequest(coinMarketEndpoint.Method, coinMarket.Url+coinMarketEndpoint.Endpoint, payload)
+		if err != nil {
+			return nil, fmt.Errorf("%s:%s", "builderRequest", err.Error())
+		}
+	} else if coinMarket.IdMrkt == int(CoinMarketCap) {
+		query := url.Values{}
+		for _, item := range coinMarketsHand {
+			switch item.Type {
+			case "array":
+				if len(cryptoCur) > 0 {
+					query.Add(item.Key, strings.Join(cryptoCur, ","))
+				} else if item.Value != "" {
+					query.Add(item.Key, item.Value)
+				}
+			default:
+				if item.Value != "" {
+					query.Add(item.Key, item.Value)
 				}
 			}
-			return out
-		}() +
-		`}`)
-
-	request, err := http.NewRequest(coinMarketEndpoint.Method, coinMarket.Url+coinMarketEndpoint.Endpoint, payload)
-	if err != nil {
-		return nil, fmt.Errorf("%s:%s", "builderRequest", err.Error())
+		}
+		request, err = http.NewRequest(coinMarketEndpoint.Method, coinMarket.Url+coinMarketEndpoint.Endpoint, nil)
+		if err != nil {
+			return nil, fmt.Errorf("%s:%s", "builderRequest", err.Error())
+		}
+		request.URL.RawQuery = query.Encode()
 	}
-
-	// Для CMC
-	// query := url.Values{}
-	// for _, item := range coinMarketsHand {
-	// 	query.Add(item.Key, func() (out string) {
-	// 		switch item.Type {
-	// 		case "string":
-	// 			out = `"` + item.Value + `"`
-	// 		case "number":
-	// 			out = item.Value
-	// 		case "boolean":
-	// 			out = item.Value
-	// 		case "array": // ["ETH","BTC","TON"]
-	// 			if item.Value == "" {
-	// 				out = `["` + strings.Join(cryptoCur, `","`) + `"]`
-	// 			} else {
-	// 				out = item.Value
-	// 			}
-	// 		}
-	// 		return out
-	// 	}())
-	// }
-	// request.URL.RawQuery = query.Encode()
 
 	request.Header.Add(func() (out string) {
 		if coinMarket.HeadContentType != "" {
@@ -164,7 +170,7 @@ func builderRequest(cryptoCur []string, marketId int, endpointId int) (*http.Req
 		}
 		return out
 	}(), "application/json")
-	request.Header.Add(coinMarket.HeadApiKey, os.Getenv("API_LCW"))
+	request.Header.Add(coinMarket.HeadApiKey, os.Getenv("API_"+coinMarket.Description))
 
 	return request, nil
 }

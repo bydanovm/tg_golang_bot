@@ -19,7 +19,7 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 	// Создаем бота
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TOKEN"))
 	if err != nil {
-		services.Logging.Panic(err.Error())
+		services.Logging.Error(err.Error())
 	}
 
 	// Устанавливаем время обновления
@@ -57,7 +57,7 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 	// Получаем обновления от бота
 	updates, err := bot.GetUpdatesChan(u)
 	if err != nil {
-		services.Logging.Panic(err.Error())
+		services.Logging.Error(err.Error())
 	}
 
 	for update := range updates {

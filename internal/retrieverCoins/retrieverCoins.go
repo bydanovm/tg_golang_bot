@@ -2,13 +2,7 @@ package retrievercoins
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
@@ -26,16 +20,24 @@ func RunRetrieverCoins(
 	timeout := 300
 	var modeluInfo models.StatusChannel
 	for {
+		wg.Wait()
+		wg.Add(1)
 		res, err := retrieverCoins()
 		modeluInfo.Start = true
 		modeluInfo.Data = res
-		modeluInfo.Error = err[0]
+		modeluInfo.Error = func() error {
+			if len(err) > 0 {
+				return err[0]
+			}
+			return nil
+		}()
 		modeluInfo.Update = true
 
 		if modeluInfo.Update {
 			modeluInfo.Module = models.RetrieverCoins
 			chanModules <- modeluInfo
 		}
+		wg.Done()
 		time.Sleep(time.Duration(timeout) * time.Second)
 	}
 }
@@ -63,7 +65,8 @@ func retrieverCoins() (res interface{}, errSl []error) {
 					errSl = append(errSl, err)
 				}
 			case CoinMarketCap:
-				if err = getAndSaveFromAPI(value); err != nil {
+				if err = getInfoCoins(value, int(key), QuotesLatest); err != nil {
+					// if err = getAndSaveFromAPI(value); err != nil {
 					errSl = append(errSl, err)
 				}
 			}
@@ -74,32 +77,14 @@ func retrieverCoins() (res interface{}, errSl []error) {
 	return nil, errSl
 }
 
-func getAndSaveFromAPI(cryptoCur []string) error {
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest", nil)
-	if err != nil {
-		return err
-	}
+func saveFromCMC(responseBody []byte, cryptoCur []string) (err error) {
 
-	q := url.Values{}
-	q.Add("symbol", strings.Join(cryptoCur, ","))
-	q.Add("convert", "USD")
-
-	req.Header.Set("Accepts", "application/json")
-	req.Header.Add("X-CMC_PRO_API_KEY", os.Getenv("API_CMC"))
-	req.URL.RawQuery = q.Encode()
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	respBody, _ := io.ReadAll(resp.Body)
 	qla := &quotesLatestAnswerExt{}
-	if err = json.Unmarshal([]byte(respBody), qla); err != nil {
-		return err
+	if err = json.Unmarshal([]byte(responseBody), qla); err != nil {
+		return fmt.Errorf("saveFromCMC:" + err.Error())
 	}
 	if qla.Error_code != 0 {
-		return err
+		return fmt.Errorf("saveFromCMC:" + err.Error())
 	}
 	for i := range qla.QuotesLatestAnswerResults {
 
@@ -111,13 +96,13 @@ func getAndSaveFromAPI(cryptoCur []string) error {
 		}
 		cryptoprices, _, err = caching.WriteCache(caching.CryptoPricesCache, cryptoprices.CryptoId, cryptoprices, false)
 		if err != nil {
-			return err
+			return fmt.Errorf("saveFromCMC:" + err.Error())
 		}
 
 		// Берем запись из кеша
 		currency, err := caching.GetCacheByIdxInMap(caching.CryptoCache, qla.QuotesLatestAnswerResults[i].Id)
 		if err != nil {
-			return fmt.Errorf("getAndSaveFromAPI:" + err.Error())
+			return fmt.Errorf("saveFromCMC:" + err.Error())
 		}
 
 		// Обновляем запись в кеше и БД
@@ -126,16 +111,13 @@ func getAndSaveFromAPI(cryptoCur []string) error {
 		currency.CryptoUpdate = qla.QuotesLatestAnswerResults[i].Last_updated
 		currency, err = caching.UpdateCacheRecord(caching.CryptoCache, currency.CryptoId, currency)
 		if err != nil {
-			return fmt.Errorf("getAndSaveFromAPI:" + err.Error())
+			return fmt.Errorf("saveFromCMC:" + err.Error())
 		}
 
 		// Поиск индекса найденной валюты и её удаление из массива needFind
 		cryptoCur = models.FindCellAndDelete(cryptoCur, qla.QuotesLatestAnswerResults[i].Symbol)
 	}
-	// Есть не найденная криптовалюта
-	if len(cryptoCur) != 0 {
-		return errors.New(`Криптовалюта ` + strings.Join(cryptoCur, `, `) + ` не найдена`)
-	}
+
 	return nil
 }
 

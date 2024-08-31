@@ -40,9 +40,9 @@ type LogMsg struct {
 }
 
 type DictCrypto struct {
-	Id              int       `sql_type:"SERIAL PRIMARY KEY" incr:"YES"`
+	Id              int       `sql_type:"SERIAL PRIMARY KEY" miss:"YES"`
 	Timestamp       time.Time `sql_type:"TIMESTAMP DEFAULT CURRENT_TIMESTAMP"`
-	CryptoId        int       `sql_type:"INTEGER" pkey:"YES"`
+	CryptoId        int       `sql_type:"INTEGER" pkey:"YES" incr:"YES"`
 	CryptoName      string    `sql_type:"TEXT" fkey:"YES"`
 	CryptoLastPrice float32   `sql_type:"NUMERIC(15,9)"`
 	CryptoUpdate    time.Time `sql_type:"TIMESTAMP"`
@@ -50,6 +50,8 @@ type DictCrypto struct {
 	CryptoCounter   int       `sql_type:"INTEGER NOT NULL DEFAULT 0"`
 	CryptoRank      int       `sql_type:"INTEGER NOT NULL DEFAULT 0" sortkey:"YES"`
 	CoinMrktId      int       `sql_type:"INTEGER NOT NULL DEFAULT 0"`
+	Slug            string    `sql_type:"TEXT"`
+	CryptoFullName  string    `sql_type:"TEXT"`
 }
 
 // Структура данных таблицы Cryptoprices
