@@ -1,10 +1,9 @@
 package tgbot
 
 import (
-	"fmt"
 	"os"
+	"time"
 
-	"github.com/mbydanov/tg_golang_bot/internal/caching"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 	"github.com/mbydanov/tg_golang_bot/internal/notifications"
@@ -14,12 +13,43 @@ import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 )
 
-// Создаем бота
+func newBot(token string) (*tgbotapi.BotAPI, error) {
+	defer func() {
+		if x := recover(); x != nil {
+			services.Logging.Errorf("Panic:newBot:%v\n", x)
+		}
+	}()
+	bot, err := tgbotapi.NewBotAPI(token)
+
+	if err != nil {
+		services.Logging.Errorf("Error: %+v\n", err)
+	}
+	return bot, err
+}
+
+func getUpdates(bot *tgbotapi.BotAPI, u tgbotapi.UpdateConfig) (updates tgbotapi.UpdatesChannel, err error) {
+	defer func() {
+		if x := recover(); x != nil {
+			services.Logging.Errorf("Panic:getUpdates:%v\n", x)
+		}
+	}()
+	updates, err = bot.GetUpdatesChan(u)
+	if err != nil {
+		services.Logging.Panic(err.Error())
+	}
+	return updates, err
+}
+
 func TelegramBot(chanModules chan models.StatusChannel) {
 	// Создаем бота
-	bot, err := tgbotapi.NewBotAPI(os.Getenv("TOKEN"))
-	if err != nil {
-		services.Logging.Error(err.Error())
+	var bot *tgbotapi.BotAPI
+	var err error
+	for {
+		bot, err = newBot(os.Getenv("TOKEN"))
+		if bot != nil && err == nil {
+			break
+		}
+		<-time.After(time.Second * 3)
 	}
 
 	// Устанавливаем время обновления
@@ -55,9 +85,13 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 	}()
 
 	// Получаем обновления от бота
-	updates, err := bot.GetUpdatesChan(u)
-	if err != nil {
-		services.Logging.Error(err.Error())
+	var updates tgbotapi.UpdatesChannel
+	for {
+		updates, err = getUpdates(bot, u)
+		if updates != nil && err == nil {
+			break
+		}
+		<-time.After(time.Second * 3)
 	}
 
 	for update := range updates {
@@ -95,24 +129,4 @@ func Filter(dcs []database.DictCrypto, fn func(dc database.DictCrypto) bool) []d
 		}
 	}
 	return filtered
-}
-
-// Единая точка проверки юзера на авторизацию
-func checkAuthUser(bot *tgbotapi.BotAPI, update *tgbotapi.Update) (user database.Users, err error) {
-	var msg tgbotapi.MessageConfig
-	var ans string
-
-	// Определение откуда пришел запрос
-	userInfo := FindUserIdFromUpdate(update)
-	// Проверка нахождения пользователя в кеше (БД)
-	// с возможностью записи в базу нового пользователя
-	user, err = caching.CheckCacheAndWrite(caching.UsersCache, userInfo.IdUsr, userInfo)
-	if err != nil {
-		ans = fmt.Sprintf("Извините. При авторизации возникла какая-то ошибка.\nПопробуйте позже /%s", Start)
-		msg = tgbotapi.NewMessage(user.ChatIdUsr,
-			ans)
-		bot.Send(msg)
-	}
-
-	return user, err
 }

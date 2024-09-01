@@ -1,11 +1,13 @@
 package tgbot
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
+	"github.com/mbydanov/tg_golang_bot/internal/database"
 )
 
 func FindUserIdFromUpdate(update *tgbotapi.Update) (userInfo UserInfo) {
@@ -45,6 +47,26 @@ func FindUserIdFromUpdate(update *tgbotapi.Update) (userInfo UserInfo) {
 	userInfo.IsBanned = false
 	userInfo.IdLvlSec = 5
 	return userInfo
+}
+
+// Единая точка проверки юзера на авторизацию
+func checkAuthUser(bot *tgbotapi.BotAPI, update *tgbotapi.Update) (user database.Users, err error) {
+	var msg tgbotapi.MessageConfig
+	var ans string
+
+	// Определение откуда пришел запрос
+	userInfo := FindUserIdFromUpdate(update)
+	// Проверка нахождения пользователя в кеше (БД)
+	// с возможностью записи в базу нового пользователя
+	user, err = caching.CheckCacheAndWrite(caching.UsersCache, userInfo.IdUsr, userInfo)
+	if err != nil {
+		ans = fmt.Sprintf("Извините. При авторизации возникла какая-то ошибка.\nПопробуйте позже /%s", Start)
+		msg = tgbotapi.NewMessage(user.ChatIdUsr,
+			ans)
+		bot.Send(msg)
+	}
+
+	return user, err
 }
 
 // Функция проверки передачи информации между функциями, при необходимости достает информацию из менюкеша
