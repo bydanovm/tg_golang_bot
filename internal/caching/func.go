@@ -11,10 +11,10 @@ import (
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 )
 
-func GetCache[T iCacheble](link iCacher[T], k int) ([]T, error) {
+func GetCache[T iCacheble](link iCacher[T], k int) (T, error) {
 	res, ok := link.Get(k)
 	if !ok {
-		return nil, fmt.Errorf("GetCache:")
+		return res, fmt.Errorf("%s", "GetCache:")
 	}
 	return res, nil
 }
@@ -37,7 +37,7 @@ func CheckCacheAndWrite[T iCacheble](link iCacher[T], k int, object T) (retObjec
 	// Иначе, проверяем в БД
 	retObjectList, err := GetCache(link, k)
 	if err == nil {
-		retObject = retObjectList[0]
+		retObject = retObjectList
 		return retObject, nil
 	}
 
@@ -75,7 +75,7 @@ func CheckCacheAndWrite[T iCacheble](link iCacher[T], k int, object T) (retObjec
 	if err != nil {
 		return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
 	}
-	retObject = retObjectList[0]
+	retObject = retObjectList
 	// Нужна ли проверка на консистентность?
 
 	return retObject, err
@@ -85,8 +85,8 @@ func CheckCacheAndWrite[T iCacheble](link iCacher[T], k int, object T) (retObjec
 func FillCache[T iCacheble](link iCacher[T], records int, offset ...int) error {
 
 	structType := &Item[T]{}
-	structType.value = make([]T, 1)
-	object := &structType.value[0]
+	// structType.value = make([]T, 1)
+	object := &structType.value
 
 	if records == 0 {
 		records = 100
@@ -229,8 +229,8 @@ func GetCacheOffset[T iCacheble](link iCacher[T], offset int, recordCnt ...int) 
 	}
 
 	structType := &Item[T]{}
-	structType.value = make([]T, 1)
-	object := &structType.value[0]
+	// structType.value = make([]T, 1)
+	object := &structType.value
 	primaryKey, err := models.GetStructInfoPK(object)
 
 	if countRecord > 1 {
@@ -254,8 +254,8 @@ func GetCacheAllRecord[T iCacheble](link iCacher[T]) (out []T, err error) {
 	countRecord := GetCacheCountRecord(link)
 
 	structType := &Item[T]{}
-	structType.value = make([]T, 1)
-	object := &structType.value[0]
+	// structType.value = make([]T, 1)
+	object := &structType.value
 	primaryKey, err := models.GetStructInfoPK(object)
 
 	if countRecord > 1 {
@@ -293,8 +293,8 @@ func GetCacheOffsetSort[T iCacheble](link iCacher[T], offset int, recordCnt ...i
 	}
 
 	structType := &Item[T]{}
-	structType.value = make([]T, 1)
-	object := &structType.value[0]
+	// structType.value = make([]T, 1)
+	object := &structType.value
 	sortKey, err := models.GetStructInfoSort(object)
 
 	if countRecord > 1 {
@@ -450,8 +450,8 @@ func WriteCache[T iCacheble](link iCacher[T], k int, object T, cacheOn ...bool) 
 		}(idw)},
 	}
 	structType := &Item[T]{}
-	structType.value = make([]T, 1)
-	objectV := &structType.value[0]
+	// structType.value = make([]T, 1)
+	objectV := &structType.value
 	rs, _, err := database.ReadData(objectV, expLst, 1)
 	if err != nil {
 		return retObject, -1, fmt.Errorf("CheckCacheAndWrite:" + err.Error())

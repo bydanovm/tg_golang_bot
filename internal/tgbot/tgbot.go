@@ -22,7 +22,17 @@ func newBot(token string) (*tgbotapi.BotAPI, error) {
 	bot, err := tgbotapi.NewBotAPI(token)
 
 	if err != nil {
-		services.Logging.Errorf("Error: %+v\n", err)
+		services.Logging.WithFields(logrus.Fields{
+			"module": "tgBot",
+			"type":   "newBot",
+			"status": "error",
+		}).Errorf("%+v", err)
+	} else {
+		services.Logging.WithFields(logrus.Fields{
+			"module": "tgBot",
+			"type":   "newBot",
+			"status": "ok",
+		}).Info()
 	}
 	return bot, err
 }
@@ -33,9 +43,20 @@ func getUpdates(bot *tgbotapi.BotAPI, u tgbotapi.UpdateConfig) (updates tgbotapi
 			services.Logging.Errorf("Panic:getUpdates:%v\n", x)
 		}
 	}()
+
 	updates, err = bot.GetUpdatesChan(u)
 	if err != nil {
-		services.Logging.Panic(err.Error())
+		services.Logging.WithFields(logrus.Fields{
+			"module": "tgBot",
+			"type":   "getUpdates",
+			"status": "error",
+		}).Errorf("%+v", err)
+	} else {
+		services.Logging.WithFields(logrus.Fields{
+			"module": "tgBot",
+			"type":   "getUpdates",
+			"status": "ok",
+		}).Info()
 	}
 	return updates, err
 }

@@ -78,7 +78,7 @@ func getInfoCoins(cryptoCur []string, marketId int, endpointId int) error {
 		}
 
 	case int(CoinMarketCap):
-		if err := saveFromCMC(responseBody, cryptoCur); err != nil {
+		if cryptoCur, err = saveFromCMC(responseBody, cryptoCur); err != nil {
 			return fmt.Errorf("getInfoCoins:" + err.Error())
 		}
 	}

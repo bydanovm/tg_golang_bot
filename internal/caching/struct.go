@@ -30,7 +30,7 @@ var CoinMarketsHandCache = Init[database.CoinMarketsHand](time.Hour*24*365, 0)
 var CryptoPricesCache = Init[database.Cryptoprices](0, 0)
 
 type Item[T iCacheble] struct {
-	value      []T
+	value      T
 	created    time.Time
 	expiration int64
 }
@@ -73,7 +73,7 @@ func (uc *Cache[T]) URUnlock() (isRLock bool) {
 }
 
 // Получение существующей записи
-func (uc *Cache[T]) Get(k int) (res []T, ok bool) {
+func (uc *Cache[T]) Get(k int) (res T, ok bool) {
 	isRlock := uc.URLockU()
 	v, ok := uc.items[k]
 
@@ -106,7 +106,7 @@ func (uc *Cache[T]) GetByIdxInMap(k int, idx int) (res T, ok bool) {
 	if ok {
 		// Не бессрочный И Время жизни не вышло ИЛИ Бессрочный
 		if v.expiration > 0 && time.Now().UnixNano() < v.expiration || v.expiration == 0 {
-			res = v.value[idx]
+			res = v.value
 			// Обновить время жизни
 			v.expiration = time.Now().Add(uc.defaultExpiration).UnixNano()
 			isRlock = uc.URUnlock()
@@ -195,7 +195,7 @@ func (uc *Cache[T]) Set(k int, val T, duration time.Duration) {
 	}
 
 	uc.items[k] = Item[T]{
-		value:      []T{val},
+		value:      val,
 		expiration: expr,
 		created:    time.Now(),
 	}
@@ -228,7 +228,8 @@ func (uc *Cache[T]) Add(k int, val T) {
 	if ok {
 		uc.mu.Lock()
 		defer uc.mu.Unlock()
-		item.value = append(item.value, val)
+		// item.value = append(item.value, val)
+		item.value = val
 		uc.items[k] = item
 	}
 }
@@ -242,9 +243,9 @@ func (uc *Cache[T]) Update(k int, val T) {
 		uc.mu.Lock()
 		defer uc.mu.Unlock()
 		item.expiration = time.Now().Add(uc.defaultExpiration).UnixNano()
-		valT := []T{}
-		valT = append(valT, val)
-		item.value = valT
+		// valT := []T{}
+		// valT = append(valT, val)
+		item.value = val
 		uc.items[k] = item
 	}
 }
@@ -254,7 +255,7 @@ func (uc *Cache[T]) Delete(k int) {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 	if v, ok := uc.items[k]; ok {
-		primaryKey, _ := models.GetStructInfoPK(v.value[0])
+		primaryKey, _ := models.GetStructInfoPK(v.value)
 		delete(uc.items, k)
 		// Удаляем ключ из слайса
 		if v1, ok1 := uc.keysSort[primaryKey.StructNameFields]; ok1 {
@@ -270,34 +271,34 @@ func (uc *Cache[T]) Delete(k int) {
 }
 
 // Удаление последней записи из слайса в мапе
-func (uc *Cache[T]) Pop(k int) {
-	uc.mu.RLock()
-	item, ok := uc.items[k]
-	uc.mu.RUnlock()
-	if ok {
-		if len(item.value) > 0 {
-			uc.mu.Lock()
-			defer uc.mu.Unlock()
-			item.value = item.value[:len(item.value)-1]
-			uc.items[k] = item
-		}
-	}
-}
+// func (uc *Cache[T]) Pop(k int) {
+// 	uc.mu.RLock()
+// 	item, ok := uc.items[k]
+// 	uc.mu.RUnlock()
+// 	if ok {
+// 		// if len(item.value) > 0 {
+// 			uc.mu.Lock()
+// 			defer uc.mu.Unlock()
+// 			item.value = item.value[:len(item.value)-1]
+// 			uc.items[k] = item
+// 		// }
+// 	}
+// }
 
 // Удаление конкретного элемента из слайса в мапе
-func (uc *Cache[T]) DropByIdx(k int, idx int) {
-	uc.mu.RLock()
-	item, ok := uc.items[k]
-	uc.mu.RUnlock()
-	if ok {
-		if len(item.value) > 0 && len(item.value) > idx {
-			uc.mu.Lock()
-			defer uc.mu.Unlock()
-			item.value = append(item.value[:idx], item.value[idx+1:]...)
-			uc.items[k] = item
-		}
-	}
-}
+// func (uc *Cache[T]) DropByIdx(k int, idx int) {
+// 	uc.mu.RLock()
+// 	item, ok := uc.items[k]
+// 	uc.mu.RUnlock()
+// 	if ok {
+// 		if len(item.value) > 0 && len(item.value) > idx {
+// 			uc.mu.Lock()
+// 			defer uc.mu.Unlock()
+// 			item.value = append(item.value[:idx], item.value[idx+1:]...)
+// 			uc.items[k] = item
+// 		}
+// 	}
+// }
 
 func (uc *Cache[T]) DropAll() {
 	uc.mu.Lock()
@@ -309,16 +310,16 @@ func (uc *Cache[T]) DropAll() {
 
 func (uc *Cache[T]) GetCacheCountRecord() int {
 	structType := &Item[T]{}
-	structType.value = make([]T, 1)
-	object := &structType.value[0]
+	// structType.value = make([]T, 1)
+	object := &structType.value
 	primaryKey, _ := models.GetStructInfoPK(object)
 	return len(uc.keysSort[primaryKey.StructNameFields])
 }
 
 func (uc *Cache[T]) GetCacheSortCountRecord() int {
 	structType := &Item[T]{}
-	structType.value = make([]T, 1)
-	object := &structType.value[0]
+	// structType.value = make([]T, 1)
+	object := &structType.value
 	sortKey, _ := models.GetStructInfoSort(object)
 	return len(uc.keysSort[sortKey.StructNameFields])
 }

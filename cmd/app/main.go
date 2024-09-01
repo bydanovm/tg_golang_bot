@@ -16,14 +16,6 @@ func main() {
 	time.Sleep(5 * time.Second)
 	// Инициализация логирования
 	services.InitLogger()
-	// Создаем таблицу
-	// if os.Getenv("CREATE_TABLE") == "yes" {
-	// 	if os.Getenv("DB_SWITCH") == "on" {
-	// 		if err := database.CreateTables(); err != nil {
-	// 			services.Logging.Panic(err.Error())
-	// 		}
-	// 	}
-	// }
 
 	time.Sleep(2 * time.Second)
 	// chConfig := make(chan config.ConfigStruct)

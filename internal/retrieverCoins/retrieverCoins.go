@@ -61,12 +61,11 @@ func retrieverCoins() (res interface{}, errSl []error) {
 		for key, value := range needFind {
 			switch key {
 			case LiveCoinWatch:
-				if err = getInfoCoins(value, int(key), Map); err != nil {
+				if err = getInfoCoins(value[:], int(key), Map); err != nil {
 					errSl = append(errSl, err)
 				}
 			case CoinMarketCap:
-				if err = getInfoCoins(value, int(key), QuotesLatest); err != nil {
-					// if err = getAndSaveFromAPI(value); err != nil {
+				if err = getInfoCoins(value[:], int(key), QuotesLatest); err != nil {
 					errSl = append(errSl, err)
 				}
 			}
@@ -77,14 +76,14 @@ func retrieverCoins() (res interface{}, errSl []error) {
 	return nil, errSl
 }
 
-func saveFromCMC(responseBody []byte, cryptoCur []string) (err error) {
+func saveFromCMC(responseBody []byte, cryptoCur []string) (cryptoCurOut []string, err error) {
 
 	qla := &quotesLatestAnswerExt{}
 	if err = json.Unmarshal([]byte(responseBody), qla); err != nil {
-		return fmt.Errorf("saveFromCMC:" + err.Error())
+		return nil, fmt.Errorf("saveFromCMC:" + err.Error())
 	}
 	if qla.Error_code != 0 {
-		return fmt.Errorf("saveFromCMC:" + err.Error())
+		return nil, fmt.Errorf("saveFromCMC:" + err.Error())
 	}
 	for i := range qla.QuotesLatestAnswerResults {
 
@@ -96,13 +95,13 @@ func saveFromCMC(responseBody []byte, cryptoCur []string) (err error) {
 		}
 		cryptoprices, _, err = caching.WriteCache(caching.CryptoPricesCache, cryptoprices.CryptoId, cryptoprices, false)
 		if err != nil {
-			return fmt.Errorf("saveFromCMC:" + err.Error())
+			return nil, fmt.Errorf("saveFromCMC:" + err.Error())
 		}
 
 		// Берем запись из кеша
 		currency, err := caching.GetCacheByIdxInMap(caching.CryptoCache, qla.QuotesLatestAnswerResults[i].Id)
 		if err != nil {
-			return fmt.Errorf("saveFromCMC:" + err.Error())
+			return nil, fmt.Errorf("saveFromCMC:" + err.Error())
 		}
 
 		// Обновляем запись в кеше и БД
@@ -111,14 +110,17 @@ func saveFromCMC(responseBody []byte, cryptoCur []string) (err error) {
 		currency.CryptoUpdate = qla.QuotesLatestAnswerResults[i].Last_updated
 		currency, err = caching.UpdateCacheRecord(caching.CryptoCache, currency.CryptoId, currency)
 		if err != nil {
-			return fmt.Errorf("saveFromCMC:" + err.Error())
+			return nil, fmt.Errorf("saveFromCMC:" + err.Error())
 		}
 
 		// Поиск индекса найденной валюты и её удаление из массива needFind
 		cryptoCur = models.FindCellAndDelete(cryptoCur, qla.QuotesLatestAnswerResults[i].Symbol)
 	}
+	if len(cryptoCur) != 0 {
+		cryptoCurOut = cryptoCur[:]
+	}
 
-	return nil
+	return cryptoCurOut, nil
 }
 
 func (qla *quotesLatestAnswerExt) UnmarshalJSON(bs []byte) error {

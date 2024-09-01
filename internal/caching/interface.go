@@ -7,7 +7,7 @@ type iCacheble interface {
 	any
 }
 type iCacher[T any] interface {
-	Get(int) ([]T, bool)
+	Get(int) (T, bool)
 	GetKeyByIdx(string, int) int
 	GetByIdxInMap(int, int) (T, bool)
 	GetKeyChain(in interface{}) []interface{}
@@ -16,8 +16,8 @@ type iCacher[T any] interface {
 	Add(int, T)
 	Update(k int, val T)
 	Delete(int)
-	Pop(int)
-	DropByIdx(int, int)
+	// Pop(int)
+	// DropByIdx(int, int)
 	DropAll()
 	GetCacheCountRecord() int
 	GetCacheSortCountRecord() int
