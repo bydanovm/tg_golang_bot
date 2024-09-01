@@ -42,17 +42,17 @@ func CheckCacheAndWrite[T iCacheble](link iCacher[T], k int, object T) (retObjec
 	}
 
 	// Сериализация для отправки
-	buffer, err := models.MarshalJSON(object)
-	if err != nil {
-		return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
-	}
+	// buffer, err := models.MarshalJSON(object)
+	// if err != nil {
+	// 	return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+	// }
 
 	// Проверка наличия в БД
-	result, err := database.CheckRecord[T](buffer)
+	result, err := database.CheckRecord[T](object)
 	if err != nil {
 		if strings.Contains(err.Error(), "NoRows") {
 			// Запись в БД и возврат ответного тела
-			result, _, err = database.WriteRecord[T](buffer)
+			result, _, err = database.WriteRecord[T](object)
 			if err != nil {
 				return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
 			}
@@ -62,13 +62,13 @@ func CheckCacheAndWrite[T iCacheble](link iCacher[T], k int, object T) (retObjec
 	}
 
 	// Десереализация для записи в кеш
-	data, err := models.UnmarshalJSON[T](result)
-	if err != nil {
-		return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
-	}
+	// data, err := models.UnmarshalJSON[T](result)
+	// if err != nil {
+	// 	return retObject, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+	// }
 
 	// Запись к кеш
-	SetCache(link, k, data, 0)
+	SetCache(link, k, result, 0)
 
 	// Считываем повторно из кеша
 	retObjectList, err = GetCache(link, k)
@@ -331,17 +331,17 @@ func UpdateCacheRecord[T iCacheble](link iCacher[T], k int, object T, cacheOn ..
 	}
 
 	// Сериализация для отправки
-	buffer, err := models.MarshalJSON(object)
-	if err != nil {
-		return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
-	}
+	// buffer, err := models.MarshalJSON(object)
+	// if err != nil {
+	// 	return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
+	// }
 
 	// Проверка наличия в БД
-	result, err := database.CheckRecord[T](buffer)
+	result, err := database.CheckRecord[T](object)
 	if err != nil {
 		if strings.Contains(err.Error(), "NoRows") {
 			// Запись в БД и возврат ответного тела
-			result, id, err = database.WriteRecord[T](buffer)
+			result, id, err = database.WriteRecord[T](object)
 			if err != nil {
 				return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
 			}
@@ -370,31 +370,31 @@ func UpdateCacheRecord[T iCacheble](link iCacher[T], k int, object T, cacheOn ..
 		}
 	} else {
 		// Обновление в БД и возврат ответного тела
-		result, err = database.UpdateRecord[T](buffer)
+		result, err = database.UpdateRecord[T](object)
 		if err != nil {
 			return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
 		}
 	}
 
 	// Десереализация для обновления в кеше
-	data, err := models.UnmarshalJSON[T](result)
-	if err != nil {
-		return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
-	}
+	// data, err := models.UnmarshalJSON[T](result)
+	// if err != nil {
+	// 	return retObject, fmt.Errorf("UpdateCacheRecord:" + err.Error())
+	// }
 
 	if cache {
 		if !notFound {
 			// Обновление в кеше
-			UpdateCache(link, k, data)
+			UpdateCache(link, k, result)
 		} else {
 			switch idConv := id.(type) {
 			case interface{}:
 				switch idInt := idConv.(type) {
 				case int64:
-					SetCache(link, int(idInt), data, 0)
+					SetCache(link, int(idInt), result, 0)
 					id = idInt
 				default:
-					SetCache(link, k, data, 0)
+					SetCache(link, k, result, 0)
 				}
 			}
 		}
@@ -419,22 +419,22 @@ func WriteCache[T iCacheble](link iCacher[T], k int, object T, cacheOn ...bool) 
 		break
 	}
 	// Сериализация для отправки
-	buffer, err := models.MarshalJSON(object)
-	if err != nil {
-		return retObject, -1, fmt.Errorf("WriteRecord:" + err.Error())
-	}
+	// buffer, err := models.MarshalJSON(object)
+	// if err != nil {
+	// 	return retObject, -1, fmt.Errorf("WriteRecord:" + err.Error())
+	// }
 
 	// Запись в БД и возврат ответного тела
-	result, idw, err := database.WriteRecord[T](buffer)
+	result, idw, err := database.WriteRecord[T](object)
 	if err != nil {
 		return retObject, -1, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
 	}
 
 	// Десереализация для записи в кеш
-	data, err := models.UnmarshalJSON[T](result)
-	if err != nil {
-		return retObject, -1, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
-	}
+	// data, err := models.UnmarshalJSON[T](result)
+	// if err != nil {
+	// 	return retObject, -1, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+	// }
 
 	// Считывание добавленной записи из БД
 	primaryKey, err := models.GetStructInfoPK(object)
@@ -474,5 +474,5 @@ func WriteCache[T iCacheble](link iCacher[T], k int, object T, cacheOn ...bool) 
 	}
 	// SetCache(link, int(id), data, 0)
 
-	return data, id, err
+	return result, id, err
 }
