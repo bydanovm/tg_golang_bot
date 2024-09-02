@@ -11,7 +11,7 @@ import (
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 )
 
-func GetCache[T iCacheble](link iCacher[T], k int) (T, error) {
+func GetCache[T iCacheble](link iCacher[T], k interface{}) (T, error) {
 	res, ok := link.Get(k)
 	if !ok {
 		return res, fmt.Errorf("%s", "GetCache:")
@@ -19,11 +19,15 @@ func GetCache[T iCacheble](link iCacher[T], k int) (T, error) {
 	return res, nil
 }
 
-func SetCache[T iCacheble](link iCacher[T], k int, object T, duration time.Duration) {
+func SetLiteCache[T iCacheble](link iCacher[T], k interface{}, object T, duration time.Duration) {
+	link.SetLite(k, object, duration)
+}
+
+func SetCache[T iCacheble](link iCacher[T], k interface{}, object T, duration time.Duration) {
 	link.Set(k, object, duration)
 }
 
-func UpdateCache[T iCacheble](link iCacher[T], k int, object T) {
+func UpdateCache[T iCacheble](link iCacher[T], k interface{}, object T) {
 	link.Update(k, object)
 }
 
@@ -32,7 +36,7 @@ func DropAllCache[T iCacheble](link iCacher[T]) {
 }
 
 // Проверка и получение первого объекта
-func CheckCacheAndWrite[T iCacheble](link iCacher[T], k int, object T) (retObject T, err error) {
+func CheckCacheAndWrite[T iCacheble](link iCacher[T], k interface{}, object T) (retObject T, err error) {
 	// Первая проверка, если в кеше есть - возращаем обьект
 	// Иначе, проверяем в БД
 	retObjectList, err := GetCache(link, k)
@@ -93,17 +97,21 @@ func FillCache[T iCacheble](link iCacher[T], records int, offset ...int) error {
 	}
 
 	// Определение PK в структуре, по которому будет произведен поиск
-	primaryKey, err := models.GetStructInfoPK(object)
+	// primaryKey, err := models.GetStructInfoPK(object)
+	// if err != nil {
+	// 	return fmt.Errorf("CheckCache:" + err.Error())
+	// }
+	primaryKey, err := getCachePKName[T]()
 	if err != nil {
-		return fmt.Errorf("CheckCache:" + err.Error())
+		return fmt.Errorf("FillCache:" + err.Error())
 	}
 
 	expLst := []database.Expressions{
-		{Key: primaryKey.StructNameFields, Operator: database.NotEQ, Value: "0"},
+		{Key: primaryKey, Operator: database.NotEQ, Value: "0"},
 	}
 	rs, _, err := database.ReadData(object, expLst, records)
 	if err != nil {
-		return fmt.Errorf("CheckCache:" + err.Error())
+		return fmt.Errorf("FillCache:" + err.Error())
 	}
 
 	for k, v := range rs {
@@ -131,7 +139,7 @@ func GetCacheKeyByIdx[T iCacheble](link iCacher[T], sort string, key int) int {
 
 // Возврат idx элемента слайса из мапы по ключу k
 // idx по умолчанию равен 0 елементу
-func GetCacheByIdxInMap[T iCacheble](link iCacher[T], k int, idx ...int) (res T, err error) {
+func GetCacheByIdxInMap[T iCacheble](link iCacher[T], k interface{}, idx ...int) (res T, err error) {
 	var idxE int = 0
 	for _, v := range idx {
 		idxE = v
@@ -228,14 +236,18 @@ func GetCacheOffset[T iCacheble](link iCacher[T], offset int, recordCnt ...int) 
 		last = true
 	}
 
-	structType := &Item[T]{}
-	// structType.value = make([]T, 1)
-	object := &structType.value
-	primaryKey, err := models.GetStructInfoPK(object)
+	// structType := &Item[T]{}
+	// // structType.value = make([]T, 1)
+	// object := &structType.value
+	// primaryKey, err := models.GetStructInfoPK(object)
+	primaryKey, err := getCachePKName[T]()
+	if err != nil {
+		return out, last, fmt.Errorf("GetCacheOffset:" + err.Error())
+	}
 
 	if countRecord > 1 {
 		for i := offset - recordCntV; i < offset; i++ {
-			key := GetCacheKeyByIdx(link, primaryKey.StructNameFields, i)
+			key := GetCacheKeyByIdx(link, primaryKey, i)
 			object, err := GetCacheByIdxInMap(link, key, 0)
 			if err != nil {
 				return out, last, fmt.Errorf("GetCacheOffset:" + err.Error())
@@ -253,14 +265,14 @@ func GetCacheOffset[T iCacheble](link iCacher[T], offset int, recordCnt ...int) 
 func GetCacheAllRecord[T iCacheble](link iCacher[T]) (out []T, err error) {
 	countRecord := GetCacheCountRecord(link)
 
-	structType := &Item[T]{}
-	// structType.value = make([]T, 1)
-	object := &structType.value
-	primaryKey, err := models.GetStructInfoPK(object)
+	primaryKey, err := getCachePKName[T]()
+	if err != nil {
+		return out, fmt.Errorf("GetCacheAllRecord:" + err.Error())
+	}
 
 	if countRecord > 1 {
 		for i := 0; i < countRecord; i++ {
-			key := GetCacheKeyByIdx(link, primaryKey.StructNameFields, i)
+			key := GetCacheKeyByIdx(link, primaryKey, i)
 			object, err := GetCacheByIdxInMap(link, key, 0)
 			if err != nil {
 				return out, fmt.Errorf("GetCacheAllRecord:" + err.Error())
@@ -315,7 +327,7 @@ func GetCacheOffsetSort[T iCacheble](link iCacher[T], offset int, recordCnt ...i
 }
 
 // Обновление записи
-func UpdateCacheRecord[T iCacheble](link iCacher[T], k int, object T, cacheOn ...bool) (retObject T, err error) {
+func UpdateCacheRecord[T iCacheble](link iCacher[T], k interface{}, object T, cacheOn ...bool) (retObject T, err error) {
 	var notFound bool
 	var id interface{}
 	cache := true
@@ -412,7 +424,7 @@ func UpdateCacheRecord[T iCacheble](link iCacher[T], k int, object T, cacheOn ..
 }
 
 // Запись в кеш с записью в БД без проверок на существование
-func WriteCache[T iCacheble](link iCacher[T], k int, object T, cacheOn ...bool) (retObject T, id int64, err error) {
+func WriteCache[T iCacheble](link iCacher[T], k interface{}, object T, cacheOn ...bool) (retObject T, id int64, err error) {
 	cache := true
 	for _, item := range cacheOn {
 		cache = item
@@ -437,12 +449,16 @@ func WriteCache[T iCacheble](link iCacher[T], k int, object T, cacheOn ...bool) 
 	// }
 
 	// Считывание добавленной записи из БД
-	primaryKey, err := models.GetStructInfoPK(object)
+	// primaryKey, err := models.GetStructInfoPK(object)
+	// if err != nil {
+	// 	return retObject, -1, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
+	// }
+	primaryKey, err := getCachePKName[T]()
 	if err != nil {
 		return retObject, -1, fmt.Errorf("CheckCacheAndWrite:" + err.Error())
 	}
 	expLst := []database.Expressions{
-		{Key: primaryKey.StructNameFields, Operator: database.EQ, Value: func(interface{}) (out string) {
+		{Key: primaryKey, Operator: database.EQ, Value: func(interface{}) (out string) {
 			if n, ok := idw.(int64); ok {
 				out = strconv.Itoa(int(n))
 			}
@@ -475,4 +491,48 @@ func WriteCache[T iCacheble](link iCacher[T], k int, object T, cacheOn ...bool) 
 	// SetCache(link, int(id), data, 0)
 
 	return result, id, err
+}
+
+func getCachePKName[T iCacheble]() (string, error) {
+	structInfo, err := GetCache(structInfoCache, models.GetName(Item[T]{}.value))
+	if err != nil {
+		structType := Item[T]{}
+		object := &structType.value
+		structInfo, err = models.GetStructInfo(object)
+		if err != nil {
+			return "", fmt.Errorf("GetCacheAllRecord:" + err.Error())
+		}
+		SetLiteCache(structInfoCache, models.GetName(Item[T]{}.value), structInfo, 0)
+	}
+	return structInfo.StructPKKey, nil
+}
+
+func getCacheFKName[T iCacheble]() (string, error) {
+	structInfo, err := GetCache(structInfoCache, models.GetName(Item[T]{}.value))
+	if err != nil {
+		structType := Item[T]{}
+		object := &structType.value
+		structInfo, err = models.GetStructInfo(object)
+		if err != nil {
+			return "", fmt.Errorf("GetCacheAllRecord:" + err.Error())
+		}
+		SetLiteCache(structInfoCache, models.GetName(Item[T]{}.value), structInfo, 0)
+	}
+	return structInfo.StructFKKey, nil
+}
+
+func getCacheSortInfo[T iCacheble]() (string, interface{}, error) {
+	structInfo, err := GetCache(structInfoCache, models.GetName(Item[T]{}.value))
+	if err != nil {
+		structType := Item[T]{}
+		object := &structType.value
+		structInfo, err = models.GetStructInfo(object)
+		if err != nil {
+			return "", nil, fmt.Errorf("GetCacheAllRecord:" + err.Error())
+		}
+		SetLiteCache(structInfoCache, models.GetName(Item[T]{}.value), structInfo, 0)
+	}
+	return structInfo.StructSortKey,
+		structInfo.StructFieldInfo[structInfo.StructSortKey].StructValue,
+		nil
 }

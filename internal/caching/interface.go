@@ -1,21 +1,25 @@
 package caching
 
-import "time"
+import (
+	"time"
+)
 
 type iCacheble interface {
 	// database.Users | database.TrackingCrypto | database.Limits
 	any
 }
-type iCacher[T any] interface {
-	Get(int) (T, bool)
+
+type iCacher[T iCacheble] interface {
+	Get(interface{}) (T, bool)
 	GetKeyByIdx(string, int) int
-	GetByIdxInMap(int, int) (T, bool)
+	GetByIdxInMap(interface{}, int) (T, bool)
 	GetKeyChain(in interface{}) []interface{}
 	GetKeyChainSort(in interface{}) []interface{}
-	Set(int, T, time.Duration)
-	Add(int, T)
-	Update(k int, val T)
-	Delete(int)
+	SetLite(interface{}, T, time.Duration)
+	Set(interface{}, T, time.Duration)
+	Add(interface{}, T)
+	Update(k interface{}, val T)
+	Delete(interface{})
 	// Pop(int)
 	// DropByIdx(int, int)
 	DropAll()
