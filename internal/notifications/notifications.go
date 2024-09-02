@@ -4,34 +4,28 @@ import (
 	"fmt"
 
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
+	"github.com/mbydanov/tg_golang_bot/internal/exchange"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 )
 
-func RunNotification(
-	chanModules chan models.StatusChannel) {
-	for {
-		// Считывание информации из канала от ретривера
-		v, ok := <-chanModules
-		if ok {
-			// Прием ответа от ретривера
-			if v.Module == models.RetrieverCoins && v.Start {
-				// Функция работы с уведомлениями по КВ
-				if res, err := notificationsCC(); err != nil {
-					// Запись в канал об ошибке
-					v.Error = err
-				} else if res != nil {
-					// Здесь будет запись в канал
-					v.Start = true
-					v.Data = res
-				} else {
-					// Если ничего не найдено
-					v.Start = false
-					v.Data = nil
-				}
-				v.Module = models.Notificator
+func RunNotification() {
+	for v := range exchange.Exchange.ReadChannel(exchange.RetrieverNotification) {
+		if v.Module == models.RetrieverCoins && v.Start {
+			// Функция работы с уведомлениями по КВ
+			if res, err := notificationsCC(); err != nil {
+				// Запись в канал об ошибке
+				v.Error = err
+			} else if res != nil {
+				// Здесь будет запись в канал
+				v.Start = true
+				v.Data = res
+			} else {
+				// Если ничего не найдено
+				v.Start = false
+				v.Data = nil
 			}
-			// Если ответ не от ретривера то записать инфу обратно в канал
-			chanModules <- v
+			v.Module = models.Notificator
+			exchange.Exchange.WriteChannel(exchange.NotificationTGBot, v)
 		}
 	}
 }

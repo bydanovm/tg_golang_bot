@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mbydanov/tg_golang_bot/internal/database"
+	"github.com/mbydanov/tg_golang_bot/internal/exchange"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 	"github.com/mbydanov/tg_golang_bot/internal/notifications"
 	"github.com/mbydanov/tg_golang_bot/internal/services"
@@ -61,7 +62,7 @@ func getUpdates(bot *tgbotapi.BotAPI, u tgbotapi.UpdateConfig) (updates tgbotapi
 	return updates, err
 }
 
-func TelegramBot(chanModules chan models.StatusChannel) {
+func TelegramBot() {
 	// Создаем бота
 	var bot *tgbotapi.BotAPI
 	var err error
@@ -79,28 +80,22 @@ func TelegramBot(chanModules chan models.StatusChannel) {
 
 	// Функция получения сообщений от модулей
 	go func() {
-		for {
-			v, ok := <-chanModules
-			if ok {
-				if v.Start {
-					if v.Module == models.RetrieverCoins {
-						// Отправка обратно в канал для нотификатора
-						chanModules <- v
-					} else if v.Module == models.Notificator {
-						arr, ok := v.Data.([]notifications.NotificationsCCStruct)
-						if ok {
-							for _, v := range arr {
-								msg := tgbotapi.NewMessage(int64(v.IdChat), v.Event)
-								bot.Send(msg)
-							}
+		for v := range exchange.Exchange.ReadChannel(exchange.NotificationTGBot) {
+			if v.Start {
+				if v.Module == models.Notificator {
+					arr, ok := v.Data.([]notifications.NotificationsCCStruct)
+					if ok {
+						for _, v := range arr {
+							msg := tgbotapi.NewMessage(int64(v.IdChat), v.Event)
+							bot.Send(msg)
 						}
 					}
 				}
-				if v.Error != nil {
-					services.Logging.WithFields(logrus.Fields{
-						"module": v.Module,
-					}).Error(v.Error.Error())
-				}
+			}
+			if v.Error != nil {
+				services.Logging.WithFields(logrus.Fields{
+					"module": v.Module,
+				}).Error(v.Error.Error())
 			}
 		}
 	}()

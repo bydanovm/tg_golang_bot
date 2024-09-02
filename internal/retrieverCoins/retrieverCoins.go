@@ -8,6 +8,7 @@ import (
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
 	"github.com/mbydanov/tg_golang_bot/internal/coinmarketcup"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
+	"github.com/mbydanov/tg_golang_bot/internal/exchange"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 )
 
@@ -15,10 +16,9 @@ type quotesLatestAnswerExt struct {
 	coinmarketcup.QuotesLatestAnswer
 }
 
-func RunRetrieverCoins(
-	chanModules chan models.StatusChannel) error {
+func RunRetrieverCoins() error {
 	timeout := 300
-	var modeluInfo models.StatusChannel
+	var modeluInfo exchange.StatusChannel
 	for {
 		wg.Wait()
 		wg.Add(1)
@@ -35,7 +35,7 @@ func RunRetrieverCoins(
 
 		if modeluInfo.Update {
 			modeluInfo.Module = models.RetrieverCoins
-			chanModules <- modeluInfo
+			exchange.Exchange.WriteChannel(exchange.RetrieverNotification, modeluInfo)
 		}
 		wg.Done()
 		time.Sleep(time.Duration(timeout) * time.Second)
