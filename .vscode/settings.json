@@ -5,8 +5,8 @@
     "dlvLoadConfig": {
       "followPointers": true,
       "maxVariableRecurse": 3,
-      "maxStringLen": 400,
-      "maxArrayValues": 400,
+      "maxStringLen": 1000,
+      "maxArrayValues": 1000,
       "maxStructFields": -1
   }
   }

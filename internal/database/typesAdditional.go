@@ -6,61 +6,63 @@ import (
 	"strings"
 	"time"
 
+	_ "github.com/lib/pq"
+
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 )
 
 // Передавать данные в json структуре для сериализации
-func CheckRecord[T any](in []byte) ([]byte, error) {
+func CheckRecord[T any](in T) (out T, err error) {
 	// Десереализация
-	data, err := models.UnmarshalJSON[T](in)
-	if err != nil {
-		return nil, fmt.Errorf("CheckRecord:" + err.Error())
-	}
+	// data, err := models.UnmarshalJSON[T](in)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("CheckRecord:" + err.Error())
+	// }
 	// Проверка наличия записи в БД по PK
-	if err := checkRecordPK(data); err != nil {
-		return nil, fmt.Errorf("CheckRecord:" + err.Error())
+	if err = checkRecordPK(in); err != nil {
+		return out, fmt.Errorf("CheckRecord:" + err.Error())
 	}
 	// Сериализация обратно
-	buffer, err := models.MarshalJSON(data)
-	if err != nil {
-		return nil, fmt.Errorf("CheckRecord:" + err.Error())
-	}
-	return buffer, nil
+	// buffer, err := models.MarshalJSON(data)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("CheckRecord:" + err.Error())
+	// }
+	return in, nil
 }
-func WriteRecord[T any](in []byte) ([]byte, interface{}, error) {
+func WriteRecord[T any](in T) (out T, id interface{}, err error) {
 	// Десереализация
-	data, err := models.UnmarshalJSON[T](in)
-	if err != nil {
-		return nil, -1, fmt.Errorf("WriteRecord:" + err.Error())
-	}
+	// data, err := models.UnmarshalJSON[T](in)
+	// if err != nil {
+	// 	return nil, -1, fmt.Errorf("WriteRecord:" + err.Error())
+	// }
 	// Запись в БД
-	id, err := writeDataT(data)
+	id, err = writeDataT(in)
 	if err != nil {
-		return nil, -1, fmt.Errorf("WriteRecord:" + err.Error())
+		return out, -1, fmt.Errorf("WriteRecord:" + err.Error())
 	}
 	// Сериализация обратно
-	buffer, err := models.MarshalJSON(data)
-	if err != nil {
-		return nil, -1, fmt.Errorf("WriteRecord:" + err.Error())
-	}
-	return buffer, id, nil
+	// buffer, err := models.MarshalJSON(data)
+	// if err != nil {
+	// 	return nil, -1, fmt.Errorf("WriteRecord:" + err.Error())
+	// }
+	return in, id, nil
 }
-func UpdateRecord[T any](in []byte) ([]byte, error) {
+func UpdateRecord[T any](in T) (out T, err error) {
 	// Десереализация
-	data, err := models.UnmarshalJSON[T](in)
-	if err != nil {
-		return nil, fmt.Errorf("UpdateRecord:" + err.Error())
-	}
+	// data, err := models.UnmarshalJSON[T](in)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("UpdateRecord:" + err.Error())
+	// }
 	// Запись в БД
-	if err := updateDataT(data); err != nil {
-		return nil, fmt.Errorf("UpdateRecord:" + err.Error())
+	if err := updateDataT(in); err != nil {
+		return out, fmt.Errorf("UpdateRecord:" + err.Error())
 	}
-	// Сериализация обратно
-	buffer, err := models.MarshalJSON(data)
-	if err != nil {
-		return nil, fmt.Errorf("UpdateRecord:" + err.Error())
-	}
-	return buffer, nil
+	// // Сериализация обратно
+	// buffer, err := models.MarshalJSON(data)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("UpdateRecord:" + err.Error())
+	// }
+	return in, nil
 }
 func checkRecordPK[T any](in T) error {
 	// Определяем информацию по структуре

@@ -30,6 +30,7 @@ services:
       DB_SWITCH: "on"
       TOKEN: ${TOKEN}
       API_CMC: ${API_CMC}
+      API_LCW: ${API_LCW}
       HOST: db
       PORT: 5432
       USER: postgres
@@ -43,7 +44,7 @@ services:
       dockerfile: ./Dockerfile
       labels:
         com.tg_golang_bot.name: "${BOT_NAME}"
-        com.tg_golang_bot.version: "0.0.9.5"
+        com.tg_golang_bot.version: "0.1.0.1"
     volumes:
       - logs:/logs/
     ports:

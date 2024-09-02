@@ -21,11 +21,19 @@ var LimitsCache = Init[database.Limits](time.Hour*24, time.Hour*12)
 
 var LimitsDictCache = Init[database.LimitsDict](time.Hour*24*365, 0)
 
+// Кеш коин маркетов
+var CoinMarketsCache = Init[database.CoinMarkets](time.Hour*24*365, 0)
+var CoinMarketsEndpointCache = Init[database.CoinMarketsEndpoint](time.Hour*24*365, 0)
+var CoinMarketsHandCache = Init[database.CoinMarketsHand](time.Hour*24*365, 0)
+
 // Временный кеш с ценами КВ
-var CryptoPricesCache = Init[database.Cryptoprices](time.Minute*5, time.Second*150)
+var CryptoPricesCache = Init[database.Cryptoprices](0, 0)
+
+// Кеш структур данных (кеш в кеше)
+var structInfoCache = Init[models.StructInfo](0, 0)
 
 type Item[T iCacheble] struct {
-	value      []T
+	value      T
 	created    time.Time
 	expiration int64
 }
@@ -34,7 +42,7 @@ type Cache[T iCacheble] struct {
 	mu                sync.RWMutex
 	defaultExpiration time.Duration // Время жизни
 	cleanupInterval   time.Duration // Интервал очистки
-	items             map[int]Item[T]
+	items             map[interface{}]Item[T]
 	keysSort          map[string][]int
 	keysMap           []map[interface{}][]interface{}
 }
@@ -42,7 +50,7 @@ type Cache[T iCacheble] struct {
 // Инициализация кеша
 func Init[T iCacheble](defaultExpiration, cleanupInterval time.Duration) *Cache[T] {
 	cache := Cache[T]{
-		items:             make(map[int]Item[T]),
+		items:             make(map[interface{}]Item[T]),
 		defaultExpiration: defaultExpiration,
 		cleanupInterval:   cleanupInterval,
 		keysSort:          make(map[string][]int),
@@ -68,7 +76,7 @@ func (uc *Cache[T]) URUnlock() (isRLock bool) {
 }
 
 // Получение существующей записи
-func (uc *Cache[T]) Get(k int) (res []T, ok bool) {
+func (uc *Cache[T]) Get(k interface{}) (res T, ok bool) {
 	isRlock := uc.URLockU()
 	v, ok := uc.items[k]
 
@@ -77,11 +85,13 @@ func (uc *Cache[T]) Get(k int) (res []T, ok bool) {
 		if v.expiration > 0 && time.Now().UnixNano() < v.expiration || v.expiration == 0 {
 			res = v.value
 			// Обновить время жизни
-			v.expiration = time.Now().Add(uc.defaultExpiration).UnixNano()
-			isRlock = uc.URUnlock()
-			uc.mu.Lock()
-			uc.items[k] = v
-			uc.mu.Unlock()
+			if v.expiration != 0 {
+				v.expiration = time.Now().Add(uc.defaultExpiration).UnixNano()
+				isRlock = uc.URUnlock()
+				uc.mu.Lock()
+				uc.items[k] = v
+				uc.mu.Unlock()
+			}
 		} else {
 			ok = false
 		}
@@ -94,14 +104,14 @@ func (uc *Cache[T]) Get(k int) (res []T, ok bool) {
 	return res, ok
 }
 
-func (uc *Cache[T]) GetByIdxInMap(k int, idx int) (res T, ok bool) {
+func (uc *Cache[T]) GetByIdxInMap(k interface{}, idx int) (res T, ok bool) {
 	isRlock := uc.URLockU()
 	v, ok := uc.items[k]
 
 	if ok {
 		// Не бессрочный И Время жизни не вышло ИЛИ Бессрочный
 		if v.expiration > 0 && time.Now().UnixNano() < v.expiration || v.expiration == 0 {
-			res = v.value[idx]
+			res = v.value
 			// Обновить время жизни
 			v.expiration = time.Now().Add(uc.defaultExpiration).UnixNano()
 			isRlock = uc.URUnlock()
@@ -154,8 +164,30 @@ func (uc *Cache[T]) GetKeyChainSort(in interface{}) []interface{} {
 	return v
 }
 
+// Добавление к кеш без сортировок
+func (uc *Cache[T]) SetLite(k interface{}, val T, duration time.Duration) {
+	var expr int64
+
+	if duration == 0 {
+		duration = uc.defaultExpiration
+	}
+	if duration > 0 {
+		// Время истечения кеша
+		expr = time.Now().Add(duration).UnixNano()
+	}
+
+	uc.mu.Lock()
+	defer uc.mu.Unlock()
+
+	uc.items[k] = Item[T]{
+		value:      val,
+		expiration: expr,
+		created:    time.Now(),
+	}
+}
+
 // Добавление новой записи + перезапись существующей
-func (uc *Cache[T]) Set(k int, val T, duration time.Duration) {
+func (uc *Cache[T]) Set(k interface{}, val T, duration time.Duration) {
 	var expr int64
 
 	if duration == 0 {
@@ -169,67 +201,68 @@ func (uc *Cache[T]) Set(k int, val T, duration time.Duration) {
 	uc.mu.RLock()
 	_, ok := uc.items[k]
 	uc.mu.RUnlock()
-	primaryKey, _ := models.GetStructInfoPK(val)
-	primaryKey.StructValue = k
+
+	structInfo := models.StructInfo{}
+	structInfo.GetFieldInfo(val)
+
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 	if !ok {
-		uc.keysSort[primaryKey.StructNameFields] = append(uc.keysSort[primaryKey.StructNameFields], k)
-		sort.Slice(uc.keysSort[primaryKey.StructNameFields], func(i, j int) bool {
-			return uc.keysSort[primaryKey.StructNameFields][i] < uc.keysSort[primaryKey.StructNameFields][j]
+		uc.keysSort[structInfo.StructPKKey] = append(uc.keysSort[structInfo.StructPKKey], k.(int))
+		sort.Slice(uc.keysSort[structInfo.StructPKKey], func(i, j int) bool {
+			return uc.keysSort[structInfo.StructPKKey][i] < uc.keysSort[structInfo.StructPKKey][j]
 		})
-		sortKey, err := models.GetStructInfoSort(val)
-		if err == nil {
-			if n, ok := sortKey.StructValue.(int); ok && n > 0 {
-				uc.keysSort[sortKey.StructNameFields] = append(uc.keysSort[sortKey.StructNameFields], n)
-				sort.Slice(uc.keysSort[sortKey.StructNameFields], func(i, j int) bool {
-					return uc.keysSort[sortKey.StructNameFields][i] < uc.keysSort[sortKey.StructNameFields][j]
+		if structInfo.StructSortKey != "" {
+			if n, ok := structInfo.StructFieldInfo[structInfo.StructSortKey].StructValue.(int); ok && n > 0 {
+				uc.keysSort[structInfo.StructSortKey] = append(uc.keysSort[structInfo.StructSortKey], n)
+				sort.Slice(uc.keysSort[structInfo.StructSortKey], func(i, j int) bool {
+					return uc.keysSort[structInfo.StructSortKey][i] < uc.keysSort[structInfo.StructSortKey][j]
 				})
 			}
 		}
 	}
 
 	uc.items[k] = Item[T]{
-		value:      []T{val},
+		value:      val,
 		expiration: expr,
 		created:    time.Now(),
 	}
 
 	// Добавление ключа связки PK <-> FK
-	foreignKey, err := models.GetStructInfoFK(val)
-	if err == nil {
-		// map[interface{}][]interface{}
+	if structInfo.StructFKKey != "" {
 		if uc.keysMap[0] == nil {
 			uc.keysMap[0] = make(map[interface{}][]interface{})
 		}
-		uc.keysMap[0][foreignKey.StructValue] = append(uc.keysMap[0][foreignKey.StructValue], primaryKey.StructValue)
+		value := structInfo.StructFieldInfo[structInfo.StructFKKey].StructValue
+		uc.keysMap[0][value] = append(uc.keysMap[0][value], k.(int))
 	}
 	// Добавление доп сортировки
-	sortKey, err := models.GetStructInfoSort(val)
-	if err == nil {
+	if structInfo.StructSortKey != "" {
 		if uc.keysMap[1] == nil {
 			uc.keysMap[1] = make(map[interface{}][]interface{})
 		}
-		uc.keysMap[1][sortKey.StructValue] = append(uc.keysMap[1][sortKey.StructValue], primaryKey.StructValue)
+		value := structInfo.StructFieldInfo[structInfo.StructSortKey].StructValue
+		uc.keysMap[1][value] = append(uc.keysMap[1][value], k.(int))
 	}
 
 }
 
 // Добавление записи в мапу к существующей
-func (uc *Cache[T]) Add(k int, val T) {
+func (uc *Cache[T]) Add(k interface{}, val T) {
 	uc.mu.RLock()
 	item, ok := uc.items[k]
 	uc.mu.RUnlock()
 	if ok {
 		uc.mu.Lock()
 		defer uc.mu.Unlock()
-		item.value = append(item.value, val)
+		// item.value = append(item.value, val)
+		item.value = val
 		uc.items[k] = item
 	}
 }
 
 // Обновление записи в кеше
-func (uc *Cache[T]) Update(k int, val T) {
+func (uc *Cache[T]) Update(k interface{}, val T) {
 	uc.mu.RLock()
 	item, ok := uc.items[k]
 	uc.mu.RUnlock()
@@ -237,19 +270,19 @@ func (uc *Cache[T]) Update(k int, val T) {
 		uc.mu.Lock()
 		defer uc.mu.Unlock()
 		item.expiration = time.Now().Add(uc.defaultExpiration).UnixNano()
-		valT := []T{}
-		valT = append(valT, val)
-		item.value = valT
+		// valT := []T{}
+		// valT = append(valT, val)
+		item.value = val
 		uc.items[k] = item
 	}
 }
 
 // Удаление всей записи
-func (uc *Cache[T]) Delete(k int) {
+func (uc *Cache[T]) Delete(k interface{}) {
 	uc.mu.Lock()
 	defer uc.mu.Unlock()
 	if v, ok := uc.items[k]; ok {
-		primaryKey, _ := models.GetStructInfoPK(v.value[0])
+		primaryKey, _ := models.GetStructInfoPK(v.value)
 		delete(uc.items, k)
 		// Удаляем ключ из слайса
 		if v1, ok1 := uc.keysSort[primaryKey.StructNameFields]; ok1 {
@@ -265,49 +298,57 @@ func (uc *Cache[T]) Delete(k int) {
 }
 
 // Удаление последней записи из слайса в мапе
-func (uc *Cache[T]) Pop(k int) {
-	uc.mu.RLock()
-	item, ok := uc.items[k]
-	uc.mu.RUnlock()
-	if ok {
-		if len(item.value) > 0 {
-			uc.mu.Lock()
-			defer uc.mu.Unlock()
-			item.value = item.value[:len(item.value)-1]
-			uc.items[k] = item
-		}
-	}
-}
+// func (uc *Cache[T]) Pop(k int) {
+// 	uc.mu.RLock()
+// 	item, ok := uc.items[k]
+// 	uc.mu.RUnlock()
+// 	if ok {
+// 		// if len(item.value) > 0 {
+// 			uc.mu.Lock()
+// 			defer uc.mu.Unlock()
+// 			item.value = item.value[:len(item.value)-1]
+// 			uc.items[k] = item
+// 		// }
+// 	}
+// }
 
 // Удаление конкретного элемента из слайса в мапе
-func (uc *Cache[T]) DropByIdx(k int, idx int) {
-	uc.mu.RLock()
-	item, ok := uc.items[k]
-	uc.mu.RUnlock()
-	if ok {
-		if len(item.value) > 0 && len(item.value) > idx {
-			uc.mu.Lock()
-			defer uc.mu.Unlock()
-			item.value = append(item.value[:idx], item.value[idx+1:]...)
-			uc.items[k] = item
-		}
-	}
+// func (uc *Cache[T]) DropByIdx(k int, idx int) {
+// 	uc.mu.RLock()
+// 	item, ok := uc.items[k]
+// 	uc.mu.RUnlock()
+// 	if ok {
+// 		if len(item.value) > 0 && len(item.value) > idx {
+// 			uc.mu.Lock()
+// 			defer uc.mu.Unlock()
+// 			item.value = append(item.value[:idx], item.value[idx+1:]...)
+// 			uc.items[k] = item
+// 		}
+// 	}
+// }
+
+func (uc *Cache[T]) DropAll() {
+	uc.mu.Lock()
+	defer uc.mu.Unlock()
+	uc.items = make(map[interface{}]Item[T])
+	uc.keysMap = make([]map[interface{}][]interface{}, 3)
+	uc.keysSort = make(map[string][]int)
 }
 
 func (uc *Cache[T]) GetCacheCountRecord() int {
-	structType := &Item[T]{}
-	structType.value = make([]T, 1)
-	object := &structType.value[0]
-	primaryKey, _ := models.GetStructInfoPK(object)
-	return len(uc.keysSort[primaryKey.StructNameFields])
+	structInfo, ok := structInfoCache.Get(models.GetName(Item[T]{}.value))
+	if !ok {
+		return 0
+	}
+	return len(uc.keysSort[structInfo.StructPKKey])
 }
 
 func (uc *Cache[T]) GetCacheSortCountRecord() int {
-	structType := &Item[T]{}
-	structType.value = make([]T, 1)
-	object := &structType.value[0]
-	sortKey, _ := models.GetStructInfoSort(object)
-	return len(uc.keysSort[sortKey.StructNameFields])
+	structInfo, ok := structInfoCache.Get(models.GetName(Item[T]{}.value))
+	if !ok {
+		return 0
+	}
+	return len(uc.keysSort[structInfo.StructSortKey])
 }
 
 func (uc *Cache[T]) startCleaner() {
@@ -328,7 +369,7 @@ func (uc *Cache[T]) cleaner() {
 
 			for k, i := range uc.items {
 				if time.Now().UnixNano() > i.expiration && i.expiration > 0 {
-					keys = append(keys, k)
+					keys = append(keys, k.(int))
 				}
 			}
 

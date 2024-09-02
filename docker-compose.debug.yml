@@ -30,6 +30,7 @@ services:
       DB_SWITCH: "on"
       TOKEN: ${TOKEN}
       API_CMC: ${API_CMC}
+      API_LCW: ${API_LCW}
       HOST: db
       PORT: 5432
       USER: postgres

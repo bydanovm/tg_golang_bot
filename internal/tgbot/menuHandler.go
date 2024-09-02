@@ -8,6 +8,7 @@ import (
 	tgbotapi "github.com/Syfaro/telegram-bot-api"
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
 	"github.com/mbydanov/tg_golang_bot/internal/database"
+	"github.com/mbydanov/tg_golang_bot/internal/models"
 	"github.com/mbydanov/tg_golang_bot/internal/services"
 	"github.com/sirupsen/logrus"
 )
@@ -196,7 +197,7 @@ func funcGetCryptoCurr(updateBot *UpdateBot) (ans string, keyboard tgbotapi.Inli
 	updateBot.Menu.IdCrypto = crypto.CryptoId
 	caching.UpdateCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu)
 
-	ans = fmt.Sprintf("1 %s = "+FormatFloatToString(crypto.CryptoLastPrice)+" %s",
+	ans = fmt.Sprintf("1 %s = "+models.FormatFloatToString(crypto.CryptoLastPrice)+" %s",
 		crypto.CryptoName,
 		crypto.CryptoLastPrice,
 		"$")
@@ -215,7 +216,7 @@ func funcGetNotif(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineKey
 			err = fmt.Errorf("funcGetNotif: %s", er.Error())
 			return ans, keyboard, err
 		}
-		listButtons = append(listButtons, buttonInfo{infoCurrency.CryptoName + " - " + fmt.Sprintf(FormatFloatToString(v.ValTrkCrp), v.ValTrkCrp) + " $", GetNotifId + "_" + fmt.Sprintf("%d", v.IdTrkCrp)})
+		listButtons = append(listButtons, buttonInfo{infoCurrency.CryptoName + " - " + fmt.Sprintf(models.FormatFloatToString(v.ValTrkCrp), v.ValTrkCrp) + " $", GetNotifId + "_" + fmt.Sprintf("%d", v.IdTrkCrp)})
 	}
 
 	ans = "Текущие отслеживания"
@@ -236,7 +237,7 @@ func funcGetNotifId(updateBot *UpdateBot) (ans string, keyboard tgbotapi.InlineK
 	updateBot.Menu.IdTracking = infoTracking.IdTrkCrp
 	caching.UpdateCache(MenuCache, updateBot.User.IdUsr, updateBot.Menu)
 
-	ans = fmt.Sprintf("Выбрано отслеживание по %s\nТекущая стоимость 1 %s = "+FormatFloatToString(infoTracking.ValTrkCrp)+" $\nТип триггера: "+infoTypeTracking.DescTypTrkCrp+"\nСтатус отслеживания: %s", infoCurrency.CryptoName, infoCurrency.CryptoName, infoCurrency.CryptoLastPrice, infoTracking.ValTrkCrp, "$", func() (out string) {
+	ans = fmt.Sprintf("Выбрано отслеживание по %s\nТекущая стоимость 1 %s = "+models.FormatFloatToString(infoTracking.ValTrkCrp)+" $\nТип триггера: "+infoTypeTracking.DescTypTrkCrp+"\nСтатус отслеживания: %s", infoCurrency.CryptoName, infoCurrency.CryptoName, infoCurrency.CryptoLastPrice, infoTracking.ValTrkCrp, "$", func() (out string) {
 		if infoTracking.OnTrkCrp {
 			out = `Активно`
 			infoLimit, err := caching.GetCacheByIdxInMap(caching.LimitsCache, infoTracking.LmtId)
@@ -391,7 +392,7 @@ func funcSetNotifPrice(updateBot *UpdateBot) (ans string, keyboard tgbotapi.Inli
 	listButtons := make([]buttonInfo, 0, 10)
 	for _, v := range prices {
 		price := fmt.Sprintf("%f", v.Price)
-		n := fmt.Sprintf(FormatFloatToString(v.Price)+" (%+d%%)", v.Price, v.Koeff)
+		n := fmt.Sprintf(models.FormatFloatToString(v.Price)+" (%+d%%)", v.Price, v.Koeff)
 		listButtons = append(listButtons, buttonInfo{n, SetNotifPriceEnter + `_` + price})
 	}
 	keyboard = ConvertToButtonInlineKeyboard(listButtons, updateBot.Data[0], 3)

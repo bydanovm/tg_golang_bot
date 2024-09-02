@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"time"
 )
 
@@ -53,6 +54,14 @@ func UnmarshalJSON[T any](buffer []byte) (res T, err error) {
 	}
 	return res, nil
 }
+func GetStructInfo(in interface{}) (stInfo StructInfo, err error) {
+	structInfo := StructInfo{}
+	// Определяем информацию по структуре
+	if err = structInfo.GetFieldInfo(in); err != nil {
+		return stInfo, fmt.Errorf("GetStructInfo:" + err.Error())
+	}
+	return structInfo, err
+}
 func GetStructInfoPK(in interface{}) (fInfo fieldInfo, err error) {
 	structInfo := StructInfo{}
 	// Определяем информацию по структуре
@@ -94,4 +103,29 @@ func GetStructInfoSort(in interface{}) (fInfo fieldInfo, err error) {
 	}
 
 	return fInfo, err
+}
+
+func FormatFloatToString(number float32) (format string) {
+	// Установим формат общей длиной в 7 знаков
+	if number >= 100000 {
+		format = "%.1f"
+	} else if number >= 10000 {
+		format = "%.2f"
+	} else if number >= 1000 {
+		format = "%.3f"
+	} else if number >= 100 {
+		format = "%.4f"
+	} else if number >= 10 {
+		format = "%.5f"
+	} else {
+		format = "%.6f"
+	}
+	return format
+}
+func GetName(in interface{}) string {
+	if t := reflect.TypeOf(in); t.Kind() == reflect.Ptr {
+		return "*" + t.Elem().Name()
+	} else {
+		return t.Name()
+	}
 }

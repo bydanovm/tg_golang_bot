@@ -1,11 +1,9 @@
 package main
 
 import (
-	"os"
 	"time"
 
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
-	"github.com/mbydanov/tg_golang_bot/internal/database"
 	"github.com/mbydanov/tg_golang_bot/internal/models"
 	"github.com/mbydanov/tg_golang_bot/internal/notifications"
 	retriever "github.com/mbydanov/tg_golang_bot/internal/retrieverCoins"
@@ -18,14 +16,6 @@ func main() {
 	time.Sleep(5 * time.Second)
 	// Инициализация логирования
 	services.InitLogger()
-	// Создаем таблицу
-	if os.Getenv("CREATE_TABLE") == "yes" {
-		if os.Getenv("DB_SWITCH") == "on" {
-			if err := database.CreateTables(); err != nil {
-				services.Logging.Panic(err.Error())
-			}
-		}
-	}
 
 	time.Sleep(2 * time.Second)
 	// chConfig := make(chan config.ConfigStruct)
@@ -47,6 +37,10 @@ func main() {
 	caching.FillCache(caching.LimitsCache, 100)
 	// Кешируем словарь лимитов
 	caching.FillCache(caching.LimitsDictCache, 10)
+	// Кешируем коин маркеты
+	caching.FillCache(caching.CoinMarketsCache, 5)
+	caching.FillCache(caching.CoinMarketsEndpointCache, 10)
+	caching.FillCache(caching.CoinMarketsHandCache, 100)
 
 	// Функция считывания настроек из канала
 	// go func() {
@@ -74,7 +68,11 @@ func main() {
 		chanModules)
 	go notifications.RunNotification(
 		chanModules)
+	go retriever.RunUpdaterRank()
 	// Вызываем бота
 	tgbot.TelegramBot(
 		chanModules)
+	// for {
+	// 	<-time.After(time.Hour)
+	// }
 }
