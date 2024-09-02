@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/mbydanov/tg_golang_bot/internal/caching"
-	"github.com/mbydanov/tg_golang_bot/internal/models"
+	exchange "github.com/mbydanov/tg_golang_bot/internal/exchange"
 	"github.com/mbydanov/tg_golang_bot/internal/notifications"
 	retriever "github.com/mbydanov/tg_golang_bot/internal/retrieverCoins"
 	"github.com/mbydanov/tg_golang_bot/internal/services"
@@ -20,7 +20,9 @@ func main() {
 	time.Sleep(2 * time.Second)
 	// chConfig := make(chan config.ConfigStruct)
 	// cfg := config.ConfigStruct{}
-	chanModules := make(chan models.StatusChannel)
+	// Добавление каналов
+	exchange.Exchange.NewChannel(exchange.RetrieverNotification)
+	exchange.Exchange.NewChannel(exchange.NotificationTGBot)
 	// Получение настроек
 	// go config.GetConfig(chConfig)
 
@@ -64,14 +66,11 @@ func main() {
 	// 	}
 	// }
 	// Вызов функции автоматического обновления КВ
-	go retriever.RunRetrieverCoins(
-		chanModules)
-	go notifications.RunNotification(
-		chanModules)
+	go retriever.RunRetrieverCoins()
+	go notifications.RunNotification()
 	go retriever.RunUpdaterRank()
 	// Вызываем бота
-	tgbot.TelegramBot(
-		chanModules)
+	tgbot.TelegramBot()
 	// for {
 	// 	<-time.After(time.Hour)
 	// }
