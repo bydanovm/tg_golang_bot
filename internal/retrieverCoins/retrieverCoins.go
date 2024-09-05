@@ -51,7 +51,7 @@ func retrieverCoins() (res interface{}, errSl []error) {
 	// Строим список валют для запроса
 	needFind := make(map[Markets][]string)
 	for _, currency := range currencies {
-		if currency.Active {
+		if currency.Active && len(needFind[Markets(currency.CoinMrktId)]) < 100 {
 			needFind[Markets(currency.CoinMrktId)] =
 				append(needFind[Markets(currency.CoinMrktId)], currency.CryptoName)
 		}
